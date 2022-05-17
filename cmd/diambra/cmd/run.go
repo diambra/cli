@@ -12,6 +12,7 @@ import (
 	"os/signal"
 	"os/user"
 	"path/filepath"
+	"runtime"
 	"syscall"
 
 	"github.com/diambra/cli/diambra"
@@ -30,10 +31,14 @@ func pathExists(path string) bool {
 }
 
 func NewCmdRun() *cobra.Command {
-	user, err := user.Current()
-	if err != nil {
-		level.Error(logger).Log("msg", "couldn't get user", "err", err.Error())
-		os.Exit(1)
+	userName := ""
+	if runtime.GOOS != "windows" {
+		u, err := user.Current()
+		if err != nil {
+			level.Error(logger).Log("msg", "couldn't get user", "err", err.Error())
+			os.Exit(1)
+		}
+		userName = u.Uid
 	}
 	homedir, err := os.UserHomeDir()
 	if err != nil {
@@ -48,7 +53,7 @@ func NewCmdRun() *cobra.Command {
 	c := &diambra.EnvConfig{
 		Stdout: os.Stdout,
 		Stderr: os.Stderr,
-		User:   user.Uid,
+		User:   userName,
 
 		PipesPath: pipesPath,
 	}
