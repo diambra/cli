@@ -13,9 +13,8 @@ import (
 )
 
 var (
-	logger = log.NewLogfmtLogger(os.Stderr)
-	debug  = false
-
+	logger  = log.NewLogfmtLogger(os.Stderr)
+	debug   = false
 	rootCmd = &cobra.Command{
 		Use:   "diambra",
 		Short: "The DIAMBRA cli",
@@ -23,16 +22,20 @@ var (
 - Run 'diambra agent init' to create a example agent.
 - Run 'diambra run ./agent.py' to bring up DIAMBRA arena and run agent.py
 `,
+		PersistentPreRun: func(cmd *cobra.Command, args []string) {
+			if debug {
+				level.Info(logger).Log("msg", "debug enabled")
+				logger = level.NewFilter(logger, level.AllowDebug())
+			} else {
+				logger = level.NewFilter(logger, level.AllowInfo())
+			}
+			logger = log.With(logger, "caller", log.Caller(3))
+
+		},
 	}
 )
 
 func Execute() {
-	if debug {
-		logger = level.NewFilter(logger, level.AllowDebug())
-	} else {
-		logger = level.NewFilter(logger, level.AllowInfo())
-	}
-	logger = log.With(logger, "caller", log.Caller(3))
 
 	err := rootCmd.Execute()
 	if err != nil {

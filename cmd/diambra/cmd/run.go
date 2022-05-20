@@ -6,7 +6,6 @@ package cmd
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"os/exec"
 	"os/signal"
@@ -45,27 +44,17 @@ func NewCmdRun() *cobra.Command {
 		level.Error(logger).Log("msg", "couldn't get homedir", "err", err.Error())
 		os.Exit(1)
 	}
-	pipesPath, err := ioutil.TempDir("", "diambra")
-	if err != nil {
-		level.Error(logger).Log("msg", "couldn't create tempdir", "err", err.Error())
-		os.Exit(1)
-	}
 	c := &diambra.EnvConfig{
 		Stdout: os.Stdout,
 		Stderr: os.Stderr,
 		User:   userName,
-
-		PipesPath: pipesPath,
 	}
 	cmd := &cobra.Command{
 		Use:   "run",
 		Short: "Runs a command with DIAMBRA arena started",
-		Long: `A longer description that spans multiple lines and likely contains examples
-and usage of using your command. For example:
-
-Cobra is a CLI library for Go that empowers applications.
-This application is a tool to generate the needed files
-to quickly create a Cobra application.`,
+		Long: `Run runs the given command after diambraEngine is brought up.
+		
+		It will set the DIAMBRA_ENVS environment variable to list the endpoints of all running environments`,
 		Run: func(cmd *cobra.Command, args []string) {
 			level.Debug(logger).Log("config", fmt.Sprintf("%#v", c))
 			if err := RunFn(c, args); err != nil {
@@ -80,6 +69,8 @@ to quickly create a Cobra application.`,
 	cmd.Flags().BoolVarP(&c.GUI, "gui", "g", true, "Enable GUI")
 	cmd.Flags().BoolVarP(&c.LockFPS, "lockfps", "l", true, "Lock FPS")
 	cmd.Flags().BoolVarP(&c.Audio, "audio", "a", true, "Enable audio")
+	cmd.Flags().BoolVarP(&c.AutoRemove, "autoremove", "x", true, "Remove container on exit")
+
 	cmd.Flags().IntVarP(&c.Scale, "scale", "s", 1, "Number of environments to run")
 	cmd.Flags().StringVarP(&c.RomsPath, "romsPath", "r", filepath.Join(homedir, ".diambra", "roms"), "Path to ROMs")
 	cmd.Flags().StringVarP(&c.CredPath, "credPath", "c", filepath.Join(homedir, ".diambraCred"), "Path to credentials file")
@@ -106,7 +97,7 @@ func RunFn(c *diambra.EnvConfig, args []string) error {
 		fh.Close()
 	}
 
-	d, err := diambra.NewEnv(logger, c)
+	d, err := diambra.NewDiambra(logger, c)
 	if err != nil {
 		return fmt.Errorf("couldn't create DIAMBRA Env: %w", err)
 	}
@@ -125,11 +116,16 @@ func RunFn(c *diambra.EnvConfig, args []string) error {
 	if err := d.Start(); err != nil {
 		return fmt.Errorf("could't start DIAMBRA Env: %w", err)
 	}
+
+	envs, err := d.EnvsString()
+	if err != nil {
+		return err
+	}
 	level.Debug(logger).Log("msg", "DIAMBRA env started")
 
 	ex := exec.Command(args[0], args[1:]...)
 	ex.Env = os.Environ()
-	ex.Env = append(ex.Env, "PIPES_PATH="+c.PipesPath)
+	ex.Env = append(ex.Env, fmt.Sprintf("DIAMBRA_ENVS=%s", envs))
 	ex.Stdin = os.Stdin
 	ex.Stdout = os.Stdout
 	ex.Stderr = os.Stderr
