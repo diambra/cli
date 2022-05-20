@@ -19,6 +19,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
+const DefaultEnvImage = "diambra/engine:main"
+
 func pathExists(path string) bool {
 	if _, err := os.Stat(path); err != nil {
 		if os.IsNotExist(err) {
@@ -54,7 +56,7 @@ func NewCmdRun() *cobra.Command {
 		Short: "Runs a command with DIAMBRA arena started",
 		Long: `Run runs the given command after diambraEngine is brought up.
 		
-		It will set the DIAMBRA_ENVS environment variable to list the endpoints of all running environments`,
+It will set the DIAMBRA_ENVS environment variable to list the endpoints of all running environments`,
 		Run: func(cmd *cobra.Command, args []string) {
 			level.Debug(logger).Log("config", fmt.Sprintf("%#v", c))
 			if err := RunFn(c, args); err != nil {
@@ -74,6 +76,8 @@ func NewCmdRun() *cobra.Command {
 	cmd.Flags().IntVarP(&c.Scale, "scale", "s", 1, "Number of environments to run")
 	cmd.Flags().StringVarP(&c.RomsPath, "romsPath", "r", filepath.Join(homedir, ".diambra", "roms"), "Path to ROMs")
 	cmd.Flags().StringVarP(&c.CredPath, "credPath", "c", filepath.Join(homedir, ".diambraCred"), "Path to credentials file")
+	cmd.Flags().StringVarP(&c.Image, "image", "i", DefaultEnvImage, "Env image to use")
+
 	cmd.Flags().SetInterspersed(false)
 
 	// cmd.LocalFlags().MarkFlagsMutuallyExclusive() Update cobra for this
