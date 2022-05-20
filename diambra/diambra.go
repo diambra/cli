@@ -12,8 +12,7 @@ import (
 )
 
 const (
-	DefaultEnvImage = "diambraengine:latest"
-	ContainerPort   = "50051/tcp"
+	ContainerPort = "50051/tcp"
 )
 
 type EnvConfig struct {
@@ -25,6 +24,7 @@ type EnvConfig struct {
 
 	RomsPath string
 	CredPath string
+	Image    string
 
 	User string
 
@@ -98,8 +98,7 @@ func newEnvContainer(config *EnvConfig, envID int) *container.Container {
 	pm.AddPortMapping(ContainerPort, "0/tcp", "127.0.0.1")
 
 	return &container.Container{
-		Image: DefaultEnvImage,
-		//Command:     []string{"--pipesPath", "/pipes", "--envId", envIDStr},
+		Image:       config.Image,
 		User:        config.User,
 		PortMapping: pm,
 		BindMounts: []*container.BindMount{
