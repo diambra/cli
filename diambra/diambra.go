@@ -7,7 +7,6 @@ import (
 	"strings"
 	"time"
 
-	"golang.org/x/term"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 
@@ -118,50 +117,25 @@ func (e *Diambra) Start() error {
 		// On first env we wait for the container to start, attach to it until the grpc port is open.
 		// This allows diambraEngine to ask for credentials if they don't exist/are expired.
 		if first {
-			readyCh := make(chan struct{})
 			wc, rc, err := e.Runner.Attach(cs.ID)
 			if err != nil {
 				return err
 			}
-
-			termState, err := term.MakeRaw(int(os.Stdout.Fd()))
-			if err != nil {
+			streamer := container.NewStreamer(e.Logger, wc, rc)
+			if err := streamer.Stream(); err != nil {
 				return err
 			}
-			defer term.Restore(int(os.Stdout.Fd()), termState)
-
-			go func() {
-				<-readyCh
-				wc.Close()
-				rc.Close()
-			}()
-
-			go func() {
-				_, err := io.Copy(os.Stdout, rc)
-				if err != nil {
-					level.Warn(e.Logger).Log("msg", "copy output failed", "err", err.Error())
-				}
-				level.Warn(e.Logger).Log("msg", "copy output done")
-			}()
-
-			go func() {
-				_, err := io.Copy(wc, os.Stdin)
-				if err != nil {
-					level.Warn(e.Logger).Log("msg", "copy input failed", "err", err.Error())
-				}
-				level.Warn(e.Logger).Log("msg", "copy input done")
-			}()
 
 			e.waitForGRPC(env.Address)
-			readyCh <- struct{}{}
-			level.Debug(e.Logger).Log("msg", "channel signaled")
-
+			streamer.Close()
 			first = false
 		}
 
 		go func(id string) {
 			level.Debug(e.Logger).Log("msg", "in go func")
-			e.Runner.CopyLogs(id, e.config.Stdout, e.config.Stderr)
+			if err := e.Runner.LogLogs(id, log.With(e.Logger, "id", id)); err != nil {
+				level.Warn(e.Logger).Log("msg", "LogLogs failed", "err", err.Error())
+			}
 			level.Debug(e.Logger).Log("msg", "end of go func")
 		}(cs.ID)
 		level.Debug(e.Logger).Log("msg", "logs copying..")

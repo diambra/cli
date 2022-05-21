@@ -4,14 +4,12 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"os"
 	"time"
 
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/mount"
 	"github.com/docker/docker/client"
-	"github.com/docker/docker/pkg/stdcopy"
 	"github.com/docker/go-connections/nat"
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
@@ -98,14 +96,27 @@ func (r *DockerRunner) Start(c *Container) (*ContainerStatus, error) {
 	return &ContainerStatus{ID: dc.ID, PortMapping: &portMapping}, nil
 }
 
-func (r *DockerRunner) CopyLogs(id string, stdout, stderr io.Writer) error {
+type logWriter struct {
+	log.Logger
+}
+
+func (l *logWriter) Write(p []byte) (n int, err error) {
+	level.Info(l).Log("msg", string(p))
+	return len(p), nil
+}
+
+func (r *DockerRunner) LogLogs(id string, logger log.Logger) error {
 	ctx := context.TODO()
-	out, err := r.Client.ContainerLogs(ctx, id, types.ContainerLogsOptions{ShowStdout: true})
+	out, err := r.Client.ContainerLogs(ctx, id, types.ContainerLogsOptions{ShowStdout: true, Follow: true})
 	if err != nil {
 		return err
 	}
-	_, err = stdcopy.StdCopy(os.Stdout, os.Stderr, out)
+	lw := &logWriter{logger}
+	level.Debug(r.Logger).Log("msg", "copying logs in LogLogs")
+	_, err = io.Copy(lw, out)
+	level.Debug(r.Logger).Log("msg", "done copying logs in LogLogs", "err", err)
 	return err
+	//_, err = stdcopy.StdCopy(os.Stdout, os.Stderr, out)
 }
 
 func (r *DockerRunner) Stop(id string) error {

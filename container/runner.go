@@ -5,6 +5,8 @@ import (
 	"io"
 	"strconv"
 	"strings"
+
+	"github.com/go-kit/log"
 )
 
 type BindMount struct {
@@ -83,7 +85,7 @@ type ContainerStatus struct {
 
 type Runner interface {
 	Start(*Container) (*ContainerStatus, error)
-	CopyLogs(id string, stdout, stderr io.Writer) error
+	LogLogs(id string, logger log.Logger) error
 	Stop(id string) error
 	Attach(id string) (io.WriteCloser, io.ReadCloser, error)
 }
