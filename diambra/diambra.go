@@ -3,7 +3,13 @@ package diambra
 import (
 	"fmt"
 	"io"
+	"os"
 	"strings"
+	"time"
+
+	"golang.org/x/term"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
@@ -21,6 +27,7 @@ type EnvConfig struct {
 	Audio      bool
 	Scale      int
 	AutoRemove bool
+	PullImage  bool
 
 	RomsPath string
 	CredPath string
@@ -49,6 +56,14 @@ func NewDiambra(logger log.Logger, config *EnvConfig) (*Diambra, error) {
 	if err != nil {
 		return nil, err
 	}
+	if config.PullImage {
+		reader, err := runner.PullImage(config.Image)
+		if err != nil {
+			return nil, fmt.Errorf("couldn't pull image %s: %w", config.Image, err)
+		}
+		defer reader.Close()
+		io.Copy(os.Stderr, reader)
+	}
 	return &Diambra{
 		Logger: logger,
 		Runner: runner,
@@ -69,7 +84,24 @@ func (e *Diambra) EnvsString() (string, error) {
 	return strings.Join(envs, " "), nil
 }
 
+func (e *Diambra) waitForGRPC(addr container.Address) error {
+	_, hp, err := addr.ProtoAddress()
+	if err != nil {
+		return err
+	}
+	for {
+		_, err := grpc.Dial(hp, grpc.WithTransportCredentials(insecure.NewCredentials()), grpc.WithBlock())
+		if err != nil {
+			level.Debug(e.Logger).Log("msg", "couldn't connect to endpoint", "endpoint", hp, "err", err.Error())
+			time.Sleep(1 * time.Second)
+			continue
+		}
+		return nil
+	}
+}
+
 func (e *Diambra) Start() error {
+	first := true
 	for i := 0; i < e.config.Scale; i++ {
 		level.Debug(e.Logger).Log("msg", "creating env container", "envID", i)
 		cs, err := e.Runner.Start(newEnvContainer(e.config, i))
@@ -82,6 +114,50 @@ func (e *Diambra) Start() error {
 			Address:         (*cs.PortMapping)[ContainerPort],
 		}
 		e.Envs = append(e.Envs, env)
+
+		// On first env we wait for the container to start, attach to it until the grpc port is open.
+		// This allows diambraEngine to ask for credentials if they don't exist/are expired.
+		if first {
+			readyCh := make(chan struct{})
+			wc, rc, err := e.Runner.Attach(cs.ID)
+			if err != nil {
+				return err
+			}
+
+			termState, err := term.MakeRaw(int(os.Stdout.Fd()))
+			if err != nil {
+				return err
+			}
+			defer term.Restore(int(os.Stdout.Fd()), termState)
+
+			go func() {
+				<-readyCh
+				wc.Close()
+				rc.Close()
+			}()
+
+			go func() {
+				_, err := io.Copy(os.Stdout, rc)
+				if err != nil {
+					level.Warn(e.Logger).Log("msg", "copy output failed", "err", err.Error())
+				}
+				level.Warn(e.Logger).Log("msg", "copy output done")
+			}()
+
+			go func() {
+				_, err := io.Copy(wc, os.Stdin)
+				if err != nil {
+					level.Warn(e.Logger).Log("msg", "copy input failed", "err", err.Error())
+				}
+				level.Warn(e.Logger).Log("msg", "copy input done")
+			}()
+
+			e.waitForGRPC(env.Address)
+			readyCh <- struct{}{}
+			level.Debug(e.Logger).Log("msg", "channel signaled")
+
+			first = false
+		}
 
 		go func(id string) {
 			level.Debug(e.Logger).Log("msg", "in go func")

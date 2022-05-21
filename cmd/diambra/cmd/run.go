@@ -72,6 +72,7 @@ It will set the DIAMBRA_ENVS environment variable to list the endpoints of all r
 	cmd.Flags().BoolVarP(&c.LockFPS, "lockfps", "l", true, "Lock FPS")
 	cmd.Flags().BoolVarP(&c.Audio, "audio", "a", true, "Enable audio")
 	cmd.Flags().BoolVarP(&c.AutoRemove, "autoremove", "x", true, "Remove container on exit")
+	cmd.Flags().BoolVarP(&c.PullImage, "pull", "p", true, "(Always) pull image before running")
 
 	cmd.Flags().IntVarP(&c.Scale, "scale", "s", 1, "Number of environments to run")
 	cmd.Flags().StringVarP(&c.RomsPath, "romsPath", "r", filepath.Join(homedir, ".diambra", "roms"), "Path to ROMs")

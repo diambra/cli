@@ -16,6 +16,8 @@ func NewBindMount(hostPath, containerPath string) *BindMount {
 	return &BindMount{hostPath, containerPath}
 }
 
+// FIXME: Rework all the addr/port stuff so we check for parse errors when creating instead of when e.g converting to int
+
 // e.g 80/tcp
 type Port string
 
@@ -24,7 +26,7 @@ func (p *Port) split() (port int, proto string, err error) {
 		parts   = strings.SplitN(string(*p), "/", 2)
 		portStr = ""
 	)
-	proto = "TCP"
+	proto = "tcp"
 
 	if len(parts) == 2 {
 		portStr = parts[0]
@@ -43,35 +45,17 @@ func (p *Port) Number() (int, error) {
 	return port, err
 }
 
-/*
-func NewPort(port string) (*Port, error) {
-	var (
-		p       = strings.SplitN(port, "/", 2)
-		portStr = ""
-		proto   = "TCP"
-	)
-	if len(p) == 2 {
-		portStr = p[0]
-		proto = p[1]
-	} else {
-		portStr = port
-	}
-
-	portn, err := strconv.Atoi(portStr)
-	if err != nil {
-		return nil, fmt.Errorf("port '%s' invalid: %w", portStr, err)
-	}
-	return &Port{proto, portn}, nil
-}
-
-func (p *Port) String() string {
-	return fmt.Sprintf("%d/%s", p.Number, p.Protocol)
-}
-*/
-
 type Address struct {
 	Host string
 	Port Port
+}
+
+func (a *Address) ProtoAddress() (string, string, error) {
+	port, proto, err := a.Port.split()
+	if err != nil {
+		return "", "", err
+	}
+	return proto, fmt.Sprintf("%s:%d", a.Host, port), nil
 }
 
 type PortMapping map[Port]Address
@@ -101,4 +85,5 @@ type Runner interface {
 	Start(*Container) (*ContainerStatus, error)
 	CopyLogs(id string, stdout, stderr io.Writer) error
 	Stop(id string) error
+	Attach(id string) (io.WriteCloser, io.ReadCloser, error)
 }
