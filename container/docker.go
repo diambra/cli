@@ -30,12 +30,17 @@ func NewDockerRunner(logger log.Logger, autoRemove bool) (*DockerRunner, error) 
 	if err != nil {
 		return nil, err
 	}
+
 	return &DockerRunner{
 		Logger:      logger,
 		Client:      client,
 		TimeoutStop: 10 * time.Second,
 		AutoRemove:  autoRemove,
 	}, nil
+}
+
+func (r *DockerRunner) PullImage(name string) (io.ReadCloser, error) {
+	return r.Client.ImagePull(context.TODO(), name, types.ImagePullOptions{})
 }
 
 func (r *DockerRunner) Start(c *Container) (*ContainerStatus, error) {
@@ -46,7 +51,8 @@ func (r *DockerRunner) Start(c *Container) (*ContainerStatus, error) {
 			Cmd:        c.Command,
 			Env:        c.Env,
 			User:       c.User,
-			Tty:        false,
+			Tty:        true,
+			OpenStdin:  true,
 			StopSignal: "SIGKILL", // FIXME: Make diambraApp handle SIGTERM insteads
 		}
 		hostConfig = &container.HostConfig{
@@ -105,4 +111,36 @@ func (r *DockerRunner) CopyLogs(id string, stdout, stderr io.Writer) error {
 func (r *DockerRunner) Stop(id string) error {
 	ctx := context.TODO()
 	return r.Client.ContainerStop(ctx, id, &r.TimeoutStop)
+}
+
+type HijackedResponseReader struct {
+	log.Logger
+	types.HijackedResponse
+}
+
+func (r *HijackedResponseReader) Read(p []byte) (n int, err error) {
+	n, err = r.HijackedResponse.Reader.Read(p)
+	// level.Debug(r.Logger).Log("msg", "read", "p", string(p), "n", n, "err", err)
+	return n, err
+}
+func (r *HijackedResponseReader) Close() error {
+	level.Debug(r.Logger).Log("msg", "closing")
+	r.HijackedResponse.Close()
+	return nil
+}
+
+func (r *DockerRunner) Attach(id string) (io.WriteCloser, io.ReadCloser, error) {
+	ctx := context.TODO()
+	resp, err := r.Client.ContainerAttach(ctx, id, types.ContainerAttachOptions{
+		Stream: true,
+		Stdin:  true,
+		Stdout: true,
+		Stderr: true,
+		Logs:   false, // FIXME?
+	})
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return resp.Conn, &HijackedResponseReader{log.With(r.Logger, "in", "HijackedResponseReader"), resp}, nil
 }
