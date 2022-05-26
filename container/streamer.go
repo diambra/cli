@@ -26,10 +26,14 @@ func NewStreamer(logger log.Logger, wc io.WriteCloser, rc io.ReadCloser) *stream
 	}
 }
 
-func (s *streamer) Stream() error {
+func (s *streamer) Stream() (<-chan error, <-chan error, error) {
+	var (
+		wcErr chan error
+		rcErr chan error
+	)
 	termState, err := term.MakeRaw(int(os.Stdout.Fd()))
 	if err != nil {
-		return err
+		return nil, nil, err
 	}
 
 	go func() {
@@ -45,6 +49,7 @@ func (s *streamer) Stream() error {
 		if !s.done && err != nil {
 			level.Warn(s.Logger).Log("msg", "copy output failed", "err", err.Error())
 		}
+		rcErr <- err
 	}()
 
 	go func() {
@@ -52,8 +57,9 @@ func (s *streamer) Stream() error {
 		if !s.done && err != nil {
 			level.Warn(s.Logger).Log("msg", "copy input failed", "err", err.Error())
 		}
+		wcErr <- err
 	}()
-	return nil
+	return wcErr, rcErr, nil
 }
 
 func (s *streamer) Close() {

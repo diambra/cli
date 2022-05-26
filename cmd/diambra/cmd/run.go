@@ -51,6 +51,17 @@ func NewCmdRun() *cobra.Command {
 		Stderr: os.Stderr,
 		User:   userName,
 	}
+
+	// FIXME: Is the current working directory a good option for this?
+	if c.RunID == "" {
+		wd, err := os.Getwd()
+		if err != nil {
+			level.Error(logger).Log("msg", "couldn't get current directory and --run-id is not set", "err", err.Error())
+			os.Exit(1)
+		}
+		c.RunID = wd
+	}
+
 	cmd := &cobra.Command{
 		Use:   "run",
 		Short: "Runs a command with DIAMBRA arena started",
@@ -68,16 +79,22 @@ It will set the DIAMBRA_ENVS environment variable to list the endpoints of all r
 			}
 		},
 	}
+	defaultRomsPath := os.Getenv("DIAMBRAROMSPATH")
+	if defaultRomsPath == "" {
+		defaultRomsPath = filepath.Join(homedir, ".diambra", "roms")
+	}
 	cmd.Flags().BoolVarP(&c.GUI, "gui", "g", true, "Enable GUI")
 	cmd.Flags().BoolVarP(&c.LockFPS, "lockfps", "l", true, "Lock FPS")
 	cmd.Flags().BoolVarP(&c.Audio, "audio", "a", true, "Enable audio")
-	cmd.Flags().BoolVarP(&c.AutoRemove, "autoremove", "x", true, "Remove container on exit")
+	cmd.Flags().StringVarP(&c.AgentImage, "agent-image", "i", "", "Run agent in container")
+	cmd.Flags().BoolVarP(&c.AutoRemove, "autoremove", "x", true, "Remove containers on exit")
 	cmd.Flags().BoolVarP(&c.PullImage, "pull", "p", true, "(Always) pull image before running")
+	cmd.Flags().StringVarP(&c.RunID, "run-id", "u", "", "(Always) pull image before running")
 
 	cmd.Flags().IntVarP(&c.Scale, "scale", "s", 1, "Number of environments to run")
-	cmd.Flags().StringVarP(&c.RomsPath, "romsPath", "r", filepath.Join(homedir, ".diambra", "roms"), "Path to ROMs")
+	cmd.Flags().StringVarP(&c.RomsPath, "romsPath", "r", defaultRomsPath, "Path to ROMs")
 	cmd.Flags().StringVarP(&c.CredPath, "credPath", "c", filepath.Join(homedir, ".diambraCred"), "Path to credentials file")
-	cmd.Flags().StringVarP(&c.Image, "image", "i", DefaultEnvImage, "Env image to use")
+	cmd.Flags().StringVarP(&c.Image, "image", "e", DefaultEnvImage, "Env image to use")
 
 	cmd.Flags().SetInterspersed(false)
 
@@ -128,6 +145,9 @@ func RunFn(c *diambra.EnvConfig, args []string) error {
 	}
 	level.Debug(logger).Log("msg", "DIAMBRA env started")
 
+	if c.AgentImage != "" {
+		return d.StartAgent(c.AgentImage, args)
+	}
 	ex := exec.Command(args[0], args[1:]...)
 	ex.Env = os.Environ()
 	ex.Env = append(ex.Env, fmt.Sprintf("DIAMBRA_ENVS=%s", envs))

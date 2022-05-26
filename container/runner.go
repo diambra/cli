@@ -23,9 +23,9 @@ func NewBindMount(hostPath, containerPath string) *BindMount {
 // e.g 80/tcp
 type Port string
 
-func (p *Port) split() (port int, proto string, err error) {
+func (p Port) split() (port int, proto string, err error) {
 	var (
-		parts   = strings.SplitN(string(*p), "/", 2)
+		parts   = strings.SplitN(string(p), "/", 2)
 		portStr = ""
 	)
 	proto = "tcp"
@@ -42,7 +42,7 @@ func (p *Port) split() (port int, proto string, err error) {
 	}
 	return port, proto, nil
 }
-func (p *Port) Number() (int, error) {
+func (p Port) Number() (int, error) {
 	port, _, err := p.split()
 	return port, err
 }
@@ -67,6 +67,7 @@ func (pm *PortMapping) AddPortMapping(containerPort string, hostPort string, hos
 }
 
 type Container struct {
+	Name             string
 	Image            string
 	Command          []string
 	Env              []string
@@ -81,6 +82,7 @@ type Container struct {
 type ContainerStatus struct {
 	ID          string
 	PortMapping *PortMapping
+	Address     string
 }
 
 type Runner interface {

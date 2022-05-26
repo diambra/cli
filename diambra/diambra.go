@@ -26,14 +26,15 @@ type EnvConfig struct {
 	Audio      bool
 	Scale      int
 	AutoRemove bool
+	AgentImage string
 	PullImage  bool
 
 	RomsPath string
 	CredPath string
 	Image    string
 
-	User string
-
+	User   string
+	RunID  string
 	Stdout io.Writer
 	Stderr io.Writer
 }
@@ -51,7 +52,7 @@ type Diambra struct {
 }
 
 func NewDiambra(logger log.Logger, config *EnvConfig) (*Diambra, error) {
-	runner, err := container.NewDockerRunner(logger, config.AutoRemove)
+	runner, err := container.NewDockerRunner(logger, config.RunID, config.AutoRemove)
 	if err != nil {
 		return nil, err
 	}
@@ -71,6 +72,7 @@ func NewDiambra(logger log.Logger, config *EnvConfig) (*Diambra, error) {
 	}, nil
 }
 
+// FIXME: check errors earlier so we don't have to here
 func (e *Diambra) EnvsString() (string, error) {
 	envs := make([]string, len(e.Envs))
 	for i, env := range e.Envs {
@@ -78,7 +80,20 @@ func (e *Diambra) EnvsString() (string, error) {
 		if err != nil {
 			return "", fmt.Errorf("invalid port %s: %w", env.Port, err)
 		}
-		envs[i] = fmt.Sprintf("127.0.0.1:%d", portn)
+		envs[i] = fmt.Sprintf("%s:%d", env.Address.Host, portn)
+	}
+	return strings.Join(envs, " "), nil
+}
+
+// FIXME: Merge with above
+func (e *Diambra) EnvsStringContainer() (string, error) {
+	portn, err := container.Port(ContainerPort).Number()
+	if err != nil {
+		return "", err
+	}
+	envs := make([]string, len(e.Envs))
+	for i, env := range e.Envs {
+		envs[i] = fmt.Sprintf("%s:%d", env.ContainerStatus.Address, portn)
 	}
 	return strings.Join(envs, " "), nil
 }
@@ -101,6 +116,7 @@ func (e *Diambra) waitForGRPC(addr container.Address) error {
 
 func (e *Diambra) Start() error {
 	first := true
+	agentLogger := e.Logger //e.Screen.NewTab())
 	for i := 0; i < e.config.Scale; i++ {
 		level.Debug(e.Logger).Log("msg", "creating env container", "envID", i)
 		cs, err := e.Runner.Start(newEnvContainer(e.config, i))
@@ -122,23 +138,33 @@ func (e *Diambra) Start() error {
 				return err
 			}
 			streamer := container.NewStreamer(e.Logger, wc, rc)
-			if err := streamer.Stream(); err != nil {
+			if _, _, err := streamer.Stream(); err != nil {
 				return err
 			}
 
 			e.waitForGRPC(env.Address)
 			streamer.Close()
-			first = false
+
+			// FIXME: We should just call Render() automatically from the Writer
+			/*
+				go func() {
+					ticker := time.NewTicker(500 * time.Millisecond) // ~30 fps
+					for range ticker.C {
+						e.Screen.Render()
+					}
+				}()*/
 		}
 
 		go func(id string) {
 			level.Debug(e.Logger).Log("msg", "in go func")
-			if err := e.Runner.LogLogs(id, log.With(e.Logger, "id", id)); err != nil {
+			if err := e.Runner.LogLogs(id, log.With(agentLogger, "id", id)); err != nil {
 				level.Warn(e.Logger).Log("msg", "LogLogs failed", "err", err.Error())
 			}
 			level.Debug(e.Logger).Log("msg", "end of go func")
 		}(cs.ID)
+
 		level.Debug(e.Logger).Log("msg", "logs copying..")
+		first = false
 	}
 	return nil
 }
@@ -148,6 +174,7 @@ func newEnvContainer(config *EnvConfig, envID int) *container.Container {
 	pm.AddPortMapping(ContainerPort, "0/tcp", "127.0.0.1")
 
 	return &container.Container{
+		Name:        fmt.Sprintf("arena-%3d", envID),
 		Image:       config.Image,
 		User:        config.User,
 		PortMapping: pm,
@@ -168,4 +195,36 @@ func (e *Diambra) Cleanup() error {
 		}
 	}
 	return rerr
+}
+
+func (e *Diambra) StartAgent(image string, args []string) error {
+	envs, err := e.EnvsStringContainer()
+	if err != nil {
+		return err
+	}
+	c := &container.Container{
+		Name:    "agent",
+		Image:   image,
+		Command: args,
+		Env:     []string{"DIAMBRA_ENVS=" + envs},
+	}
+	cs, err := e.Runner.Start(c)
+	if err != nil {
+		return err
+	}
+	wc, rc, err := e.Runner.Attach(cs.ID)
+	if err != nil {
+		return err
+	}
+	streamer := container.NewStreamer(e.Logger, wc, rc)
+	wcErr, rcErr, err := streamer.Stream()
+	if err != nil {
+		return err
+	}
+	select {
+	case err := <-wcErr:
+		return fmt.Errorf("container writer failed: %w", err)
+	case err := <-rcErr:
+		return fmt.Errorf("container reader failed: %w", err)
+	}
 }
