@@ -8,7 +8,9 @@ import (
 
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
+	"github.com/docker/docker/api/types/filters"
 	"github.com/docker/docker/api/types/mount"
+	"github.com/docker/docker/api/types/network"
 	"github.com/docker/docker/client"
 	"github.com/docker/go-connections/nat"
 	"github.com/go-kit/log"
@@ -21,19 +23,30 @@ type DockerRunner struct {
 	*client.Client
 	TimeoutStop time.Duration
 	AutoRemove  bool
+	networkID   string
 }
 
-func NewDockerRunner(logger log.Logger, autoRemove bool) (*DockerRunner, error) {
+func NewDockerRunner(logger log.Logger, runID string, autoRemove bool) (*DockerRunner, error) {
 	client, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
 	if err != nil {
 		return nil, err
 	}
-
+	if _, err := client.NetworksPrune(context.TODO(), filters.NewArgs(filters.Arg("label", "diambra-run-id="+runID))); err != nil {
+		return nil, fmt.Errorf("couldn't prune networks: %w", err)
+	}
+	resp, err := client.NetworkCreate(context.TODO(), "diambra", types.NetworkCreate{
+		CheckDuplicate: false,
+		Labels:         map[string]string{"diambra-run-id": runID},
+	})
+	if err != nil {
+		return nil, fmt.Errorf("couldn't create network: %w", err)
+	}
 	return &DockerRunner{
 		Logger:      logger,
 		Client:      client,
 		TimeoutStop: 10 * time.Second,
 		AutoRemove:  autoRemove,
+		networkID:   resp.ID,
 	}, nil
 }
 
@@ -59,12 +72,14 @@ func (r *DockerRunner) Start(c *Container) (*ContainerStatus, error) {
 	)
 	hostConfig.Mounts = make([]mount.Mount, len(c.BindMounts))
 
-	hostConfig.PortBindings = make(nat.PortMap, len(*c.PortMapping))
-	config.ExposedPorts = make(nat.PortSet, len(*c.PortMapping))
-	for cp, ha := range *c.PortMapping {
-		level.Debug(r.Logger).Log("msg", "mapping port", "containerPort", cp, "hostPort", ha.Port)
-		hostConfig.PortBindings[nat.Port(cp)] = []nat.PortBinding{{HostIP: ha.Host, HostPort: string(ha.Port)}}
-		config.ExposedPorts[nat.Port(cp)] = struct{}{}
+	if c.PortMapping != nil {
+		hostConfig.PortBindings = make(nat.PortMap, len(*c.PortMapping))
+		config.ExposedPorts = make(nat.PortSet, len(*c.PortMapping))
+		for cp, ha := range *c.PortMapping {
+			level.Debug(r.Logger).Log("msg", "mapping port", "containerPort", cp, "hostPort", ha.Port)
+			hostConfig.PortBindings[nat.Port(cp)] = []nat.PortBinding{{HostIP: ha.Host, HostPort: string(ha.Port)}}
+			config.ExposedPorts[nat.Port(cp)] = struct{}{}
+		}
 	}
 
 	for i, m := range c.BindMounts {
@@ -80,7 +95,9 @@ func (r *DockerRunner) Start(c *Container) (*ContainerStatus, error) {
 	if err != nil {
 		return nil, err
 	}
-
+	if err := r.Client.NetworkConnect(ctx, r.networkID, dc.ID, &network.EndpointSettings{Aliases: []string{c.Name}}); err != nil {
+		return nil, err
+	}
 	if err := r.Client.ContainerStart(ctx, dc.ID, types.ContainerStartOptions{}); err != nil {
 		return nil, err
 	}
@@ -93,7 +110,7 @@ func (r *DockerRunner) Start(c *Container) (*ContainerStatus, error) {
 	for p, pbs := range cj.NetworkSettings.Ports {
 		portMapping.AddPortMapping(string(p), string(pbs[0].HostPort), pbs[0].HostIP)
 	}
-	return &ContainerStatus{ID: dc.ID, PortMapping: &portMapping}, nil
+	return &ContainerStatus{ID: dc.ID, PortMapping: &portMapping, Address: cj.NetworkSettings.IPAddress}, nil
 }
 
 type logWriter struct {
