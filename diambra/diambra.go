@@ -33,10 +33,11 @@ type EnvConfig struct {
 	CredPath string
 	Image    string
 
-	User   string
-	RunID  string
-	Stdout io.Writer
-	Stderr io.Writer
+	User        string
+	RunID       string
+	Interactive bool
+	Stdout      io.Writer
+	Stderr      io.Writer
 }
 
 type Env struct {
@@ -54,7 +55,7 @@ type Diambra struct {
 func NewDiambra(logger log.Logger, config *EnvConfig) (*Diambra, error) {
 	runner, err := container.NewDockerRunner(logger, config.RunID, config.AutoRemove)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("couldn't create runner: %w", err)
 	}
 	if config.PullImage {
 		reader, err := runner.PullImage(config.Image)
@@ -114,35 +115,35 @@ func (e *Diambra) waitForGRPC(addr container.Address) error {
 	}
 }
 
-func (e *Diambra) Start() error {
+func (d *Diambra) Start() error {
 	first := true
-	agentLogger := e.Logger //e.Screen.NewTab())
-	for i := 0; i < e.config.Scale; i++ {
-		level.Debug(e.Logger).Log("msg", "creating env container", "envID", i)
-		cs, err := e.Runner.Start(newEnvContainer(e.config, i))
+	agentLogger := d.Logger //e.Screen.NewTab())
+	for i := 0; i < d.config.Scale; i++ {
+		level.Debug(d.Logger).Log("msg", "creating env container", "envID", i)
+		cs, err := d.Runner.Start(newEnvContainer(d.config, i))
 		if err != nil {
-			return err
+			return fmt.Errorf("couldn't start env container: %w", err)
 		}
-		level.Debug(e.Logger).Log("msg", "started env container", "id", cs.ID)
+		level.Debug(d.Logger).Log("msg", "started env container", "id", cs.ID)
 		env := &Env{
 			ContainerStatus: cs,
 			Address:         (*cs.PortMapping)[ContainerPort],
 		}
-		e.Envs = append(e.Envs, env)
+		d.Envs = append(d.Envs, env)
 
 		// On first env we wait for the container to start, attach to it until the grpc port is open.
 		// This allows diambraEngine to ask for credentials if they don't exist/are expired.
-		if first {
-			wc, rc, err := e.Runner.Attach(cs.ID)
+		if first && d.config.Interactive {
+			wc, rc, err := d.Runner.Attach(cs.ID)
 			if err != nil {
 				return err
 			}
-			streamer := container.NewStreamer(e.Logger, wc, rc)
+			streamer := container.NewStreamer(d.Logger, wc, rc)
 			if _, _, err := streamer.Stream(); err != nil {
-				return err
+				return fmt.Errorf("couldn't attach to container: %w", err)
 			}
 
-			e.waitForGRPC(env.Address)
+			d.waitForGRPC(env.Address)
 			streamer.Close()
 
 			// FIXME: We should just call Render() automatically from the Writer
@@ -156,14 +157,14 @@ func (e *Diambra) Start() error {
 		}
 
 		go func(id string) {
-			level.Debug(e.Logger).Log("msg", "in go func")
-			if err := e.Runner.LogLogs(id, log.With(agentLogger, "id", id)); err != nil {
-				level.Warn(e.Logger).Log("msg", "LogLogs failed", "err", err.Error())
+			level.Debug(d.Logger).Log("msg", "in go func")
+			if err := d.Runner.LogLogs(id, log.With(agentLogger, "id", id)); err != nil {
+				level.Warn(d.Logger).Log("msg", "LogLogs failed", "err", err.Error())
 			}
-			level.Debug(e.Logger).Log("msg", "end of go func")
+			level.Debug(d.Logger).Log("msg", "end of go func")
 		}(cs.ID)
 
-		level.Debug(e.Logger).Log("msg", "logs copying..")
+		level.Debug(d.Logger).Log("msg", "logs copying..")
 		first = false
 	}
 	return nil

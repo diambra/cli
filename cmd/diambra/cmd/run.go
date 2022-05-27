@@ -52,6 +52,11 @@ func NewCmdRun() *cobra.Command {
 		User:   userName,
 	}
 
+	fi, err := os.Stdout.Stat()
+	if err != nil || (fi.Mode()&os.ModeCharDevice) != 0 {
+		c.Interactive = true
+	}
+
 	// FIXME: Is the current working directory a good option for this?
 	if c.RunID == "" {
 		wd, err := os.Getwd()
