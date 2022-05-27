@@ -20,26 +20,6 @@ const (
 	ContainerPort = "50051/tcp"
 )
 
-type EnvConfig struct {
-	LockFPS    bool
-	GUI        bool
-	Audio      bool
-	Scale      int
-	AutoRemove bool
-	AgentImage string
-	PullImage  bool
-
-	RomsPath string
-	CredPath string
-	Image    string
-
-	User        string
-	RunID       string
-	Interactive bool
-	Stdout      io.Writer
-	Stderr      io.Writer
-}
-
 type Env struct {
 	*container.ContainerStatus
 	container.Address
@@ -174,7 +154,7 @@ func newEnvContainer(config *EnvConfig, envID int) *container.Container {
 	pm := &container.PortMapping{}
 	pm.AddPortMapping(ContainerPort, "0/tcp", "127.0.0.1")
 
-	return &container.Container{
+	c := &container.Container{
 		Name:        fmt.Sprintf("arena-%3d", envID),
 		Image:       config.Image,
 		User:        config.User,
@@ -184,6 +164,10 @@ func newEnvContainer(config *EnvConfig, envID int) *container.Container {
 			container.NewBindMount(config.RomsPath, "/opt/diambraArena/roms"),
 		},
 	}
+	if config.SeccompProfile != "" {
+		c.SecurityOpt = []string{"seccomp=" + config.SeccompProfile}
+	}
+	return c
 }
 
 func (e *Diambra) Cleanup() error {
