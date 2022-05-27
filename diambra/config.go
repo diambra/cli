@@ -16,7 +16,6 @@ type EnvConfig struct {
 	Image    string
 
 	User           string
-	RunID          string
 	SeccompProfile string
 	Interactive    bool
 	Stdout         io.Writer
