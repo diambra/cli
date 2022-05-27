@@ -72,7 +72,9 @@ func NewCmdRun() *cobra.Command {
 		Short: "Runs a command with DIAMBRA arena started",
 		Long: `Run runs the given command after diambraEngine is brought up.
 		
-It will set the DIAMBRA_ENVS environment variable to list the endpoints of all running environments`,
+It will set the DIAMBRA_ENVS environment variable to list the endpoints of all running environments.
+
+The flag --agent-image can be used to run the commands in the given image.`,
 		Run: func(cmd *cobra.Command, args []string) {
 			level.Debug(logger).Log("config", fmt.Sprintf("%#v", c))
 			if err := RunFn(c, args); err != nil {
