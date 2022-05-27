@@ -28,8 +28,8 @@ func NewStreamer(logger log.Logger, wc io.WriteCloser, rc io.ReadCloser) *stream
 
 func (s *streamer) Stream() (<-chan error, <-chan error, error) {
 	var (
-		wcErr chan error
-		rcErr chan error
+		wcErr = make(chan error)
+		rcErr = make(chan error)
 	)
 	termState, err := term.MakeRaw(int(os.Stdout.Fd()))
 	if err != nil {
