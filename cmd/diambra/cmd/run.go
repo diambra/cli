@@ -97,7 +97,7 @@ It will set the DIAMBRA_ENVS environment variable to list the endpoints of all r
 	cmd.Flags().StringVarP(&c.RunID, "run-id", "u", "", "(Always) pull image before running")
 
 	cmd.Flags().IntVarP(&c.Scale, "scale", "s", 1, "Number of environments to run")
-	cmd.Flags().StringVarP(&c.RomsPath, "romsPath", "r", defaultRomsPath, "Path to ROMs")
+	cmd.Flags().StringVarP(&c.RomsPath, "romsPath", "r", defaultRomsPath, "Path to ROMs (default to DIAMBRAROMSPATH env var if set)")
 	cmd.Flags().StringVarP(&c.CredPath, "credPath", "c", filepath.Join(homedir, ".diambraCred"), "Path to credentials file")
 	cmd.Flags().StringVarP(&c.Image, "image", "e", DefaultEnvImage, "Env image to use")
 
