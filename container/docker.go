@@ -67,7 +67,8 @@ func (r *DockerRunner) Start(c *Container) (*ContainerStatus, error) {
 			StopSignal: "SIGKILL", // FIXME: Make diambraApp handle SIGTERM insteads
 		}
 		hostConfig = &container.HostConfig{
-			AutoRemove: r.AutoRemove,
+			AutoRemove:  r.AutoRemove,
+			SecurityOpt: c.SecurityOpt,
 		}
 	)
 	hostConfig.Mounts = make([]mount.Mount, len(c.BindMounts))

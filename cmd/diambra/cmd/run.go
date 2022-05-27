@@ -75,6 +75,7 @@ func NewCmdRun() *cobra.Command {
 It will set the DIAMBRA_ENVS environment variable to list the endpoints of all running environments.
 
 The flag --agent-image can be used to run the commands in the given image.`,
+		Args: cobra.MinimumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			level.Debug(logger).Log("config", fmt.Sprintf("%#v", c))
 			if err := RunFn(c, args); err != nil {
@@ -90,18 +91,22 @@ The flag --agent-image can be used to run the commands in the given image.`,
 	if defaultRomsPath == "" {
 		defaultRomsPath = filepath.Join(homedir, ".diambra", "roms")
 	}
+	cmd.Flags().IntVarP(&c.Scale, "scale", "s", 1, "Number of environments to run")
+	cmd.Flags().BoolVarP(&c.AutoRemove, "autoremove", "x", true, "Remove containers on exit")
+
+	cmd.Flags().StringVarP(&c.RomsPath, "romsPath", "r", defaultRomsPath, "Path to ROMs (default to DIAMBRAROMSPATH env var if set)")
+	cmd.Flags().StringVarP(&c.CredPath, "credPath", "c", filepath.Join(homedir, ".diambraCred"), "Path to credentials file")
+
 	cmd.Flags().BoolVarP(&c.GUI, "gui", "g", true, "Enable GUI")
 	cmd.Flags().BoolVarP(&c.LockFPS, "lockfps", "l", true, "Lock FPS")
 	cmd.Flags().BoolVarP(&c.Audio, "audio", "a", true, "Enable audio")
-	cmd.Flags().StringVarP(&c.AgentImage, "agent-image", "i", "", "Run agent in container")
-	cmd.Flags().BoolVarP(&c.AutoRemove, "autoremove", "x", true, "Remove containers on exit")
-	cmd.Flags().BoolVarP(&c.PullImage, "pull", "p", true, "(Always) pull image before running")
-	cmd.Flags().StringVarP(&c.RunID, "run-id", "u", "", "(Always) pull image before running")
 
-	cmd.Flags().IntVarP(&c.Scale, "scale", "s", 1, "Number of environments to run")
-	cmd.Flags().StringVarP(&c.RomsPath, "romsPath", "r", defaultRomsPath, "Path to ROMs (default to DIAMBRAROMSPATH env var if set)")
-	cmd.Flags().StringVarP(&c.CredPath, "credPath", "c", filepath.Join(homedir, ".diambraCred"), "Path to credentials file")
-	cmd.Flags().StringVarP(&c.Image, "image", "e", DefaultEnvImage, "Env image to use")
+	cmd.Flags().BoolVarP(&c.PullImage, "pull", "p", true, "(Always) pull image before running")
+	cmd.Flags().StringVarP(&c.RunID, "run-id", "u", "", "ID to tag resources (e.g networks, containers) created by running this command")
+
+	cmd.Flags().StringVarP(&c.AgentImage, "agent.image", "i", "", "Run agent in container")
+	cmd.Flags().StringVarP(&c.Image, "env.image", "e", DefaultEnvImage, "Env image to use")
+	cmd.Flags().StringVar(&c.SeccompProfile, "env.seccomp", "unconfined", "Path to seccomp profile to use for env (may slow down environment). Set to \"\" for runtime's default profile.")
 
 	cmd.Flags().SetInterspersed(false)
 
@@ -155,6 +160,7 @@ func RunFn(c *diambra.EnvConfig, args []string) error {
 	if c.AgentImage != "" {
 		return d.StartAgent(c.AgentImage, args)
 	}
+
 	ex := exec.Command(args[0], args[1:]...)
 	ex.Env = os.Environ()
 	ex.Env = append(ex.Env, fmt.Sprintf("DIAMBRA_ENVS=%s", envs))
