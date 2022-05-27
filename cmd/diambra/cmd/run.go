@@ -57,16 +57,6 @@ func NewCmdRun() *cobra.Command {
 		c.Interactive = true
 	}
 
-	// FIXME: Is the current working directory a good option for this?
-	if c.RunID == "" {
-		wd, err := os.Getwd()
-		if err != nil {
-			level.Error(logger).Log("msg", "couldn't get current directory and --run-id is not set", "err", err.Error())
-			os.Exit(1)
-		}
-		c.RunID = wd
-	}
-
 	cmd := &cobra.Command{
 		Use:   "run",
 		Short: "Runs a command with DIAMBRA arena started",
@@ -102,7 +92,6 @@ The flag --agent-image can be used to run the commands in the given image.`,
 	cmd.Flags().BoolVarP(&c.Audio, "audio", "a", true, "Enable audio")
 
 	cmd.Flags().BoolVarP(&c.PullImage, "pull", "p", true, "(Always) pull image before running")
-	cmd.Flags().StringVarP(&c.RunID, "run-id", "u", "", "ID to tag resources (e.g networks, containers) created by running this command")
 
 	cmd.Flags().StringVarP(&c.AgentImage, "agent.image", "i", "", "Run agent in container")
 	cmd.Flags().StringVarP(&c.Image, "env.image", "e", DefaultEnvImage, "Env image to use")

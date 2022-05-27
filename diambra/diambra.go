@@ -33,7 +33,7 @@ type Diambra struct {
 }
 
 func NewDiambra(logger log.Logger, config *EnvConfig) (*Diambra, error) {
-	runner, err := container.NewDockerRunner(logger, config.RunID, config.AutoRemove)
+	runner, err := container.NewDockerRunner(logger, config.AutoRemove)
 	if err != nil {
 		return nil, fmt.Errorf("couldn't create runner: %w", err)
 	}

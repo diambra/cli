@@ -8,9 +8,7 @@ import (
 
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
-	"github.com/docker/docker/api/types/filters"
 	"github.com/docker/docker/api/types/mount"
-	"github.com/docker/docker/api/types/network"
 	"github.com/docker/docker/client"
 	"github.com/docker/go-connections/nat"
 	"github.com/go-kit/log"
@@ -23,30 +21,18 @@ type DockerRunner struct {
 	*client.Client
 	TimeoutStop time.Duration
 	AutoRemove  bool
-	networkID   string
 }
 
-func NewDockerRunner(logger log.Logger, runID string, autoRemove bool) (*DockerRunner, error) {
+func NewDockerRunner(logger log.Logger, autoRemove bool) (*DockerRunner, error) {
 	client, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
 	if err != nil {
 		return nil, err
-	}
-	if _, err := client.NetworksPrune(context.TODO(), filters.NewArgs(filters.Arg("label", "diambra-run-id="+runID))); err != nil {
-		return nil, fmt.Errorf("couldn't prune networks: %w", err)
-	}
-	resp, err := client.NetworkCreate(context.TODO(), "diambra", types.NetworkCreate{
-		CheckDuplicate: false,
-		Labels:         map[string]string{"diambra-run-id": runID},
-	})
-	if err != nil {
-		return nil, fmt.Errorf("couldn't create network: %w", err)
 	}
 	return &DockerRunner{
 		Logger:      logger,
 		Client:      client,
 		TimeoutStop: 10 * time.Second,
 		AutoRemove:  autoRemove,
-		networkID:   resp.ID,
 	}, nil
 }
 
@@ -96,9 +82,7 @@ func (r *DockerRunner) Start(c *Container) (*ContainerStatus, error) {
 	if err != nil {
 		return nil, err
 	}
-	if err := r.Client.NetworkConnect(ctx, r.networkID, dc.ID, &network.EndpointSettings{Aliases: []string{c.Name}}); err != nil {
-		return nil, err
-	}
+
 	if err := r.Client.ContainerStart(ctx, dc.ID, types.ContainerStartOptions{}); err != nil {
 		return nil, err
 	}
