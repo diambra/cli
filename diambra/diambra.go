@@ -208,8 +208,14 @@ func (e *Diambra) StartAgent(image string, args []string) error {
 	}
 	select {
 	case err := <-wcErr:
-		return fmt.Errorf("container writer failed: %w", err)
+		if err != nil {
+			return fmt.Errorf("container writer failed: %w", err)
+		}
+		return nil
 	case err := <-rcErr:
-		return fmt.Errorf("container reader failed: %w", err)
+		if err != nil {
+			return fmt.Errorf("container reader failed: %w", err)
+		}
+		return nil
 	}
 }
