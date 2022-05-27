@@ -2,13 +2,15 @@
 set -euo pipefail
 
 build() {
-	mkdir -p bin
-	for f in cmd/*; do
-		cmd="$(basename "$f")"
-		out="bin/$cmd.$GOOS-$GOARCH"
-		echo "Building $out" >&2
-		CGO_ENABLED=0 go build -o "$out" "./cmd/$cmd"
-	done
+    mkdir -p bin
+    for f in cmd/*; do
+        cmd="$(basename "$f")"
+        out="bin/$cmd.$GOOS-$GOARCH"
+        echo "Building $out" >&2
+        rm -f "$out" "$out."*
+        CGO_ENABLED=0 go build -o "$out" "./cmd/$cmd"
+        bzip2 "$out"
+    done
 }
 
 GOOS=linux  GOARCH=amd64 build
