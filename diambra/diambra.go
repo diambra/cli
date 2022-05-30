@@ -202,7 +202,7 @@ func (e *Diambra) Cleanup() error {
 	return rerr
 }
 
-func (e *Diambra) StartAgent(image string, args []string) error {
+func (e *Diambra) RunAgentImage(image string, args []string) error {
 	envs, err := e.EnvsStringContainer()
 	if err != nil {
 		return err
@@ -228,6 +228,10 @@ func (e *Diambra) StartAgent(image string, args []string) error {
 	streamer := container.NewStreamer(e.Logger, wc, rc)
 	if err := streamer.Stream(); err != nil {
 		return err
+	}
+	defer streamer.Close()
+	if err := e.Runner.Wait(cs.ID); err != nil {
+		return fmt.Errorf("couldn't wait for container to finish: %w", err)
 	}
 	return nil
 }

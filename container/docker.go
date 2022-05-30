@@ -157,3 +157,16 @@ func (r *DockerRunner) Attach(id string) (io.WriteCloser, io.ReadCloser, error) 
 
 	return resp.Conn, &HijackedResponseReader{log.With(r.Logger, "in", "HijackedResponseReader"), resp}, nil
 }
+
+func (r *DockerRunner) Wait(id string) error {
+	ctx := context.TODO()
+	statusCh, errCh := r.Client.ContainerWait(ctx, id, container.WaitConditionNotRunning)
+	select {
+	case err := <-errCh:
+		if err != nil {
+			return err
+		}
+	case <-statusCh:
+	}
+	return nil
+}

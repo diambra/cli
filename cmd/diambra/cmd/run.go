@@ -148,7 +148,7 @@ func RunFn(c *diambra.EnvConfig, args []string) error {
 	level.Debug(logger).Log("msg", "DIAMBRA env started")
 
 	if c.AgentImage != "" {
-		return d.StartAgent(c.AgentImage, args)
+		return d.RunAgentImage(c.AgentImage, args)
 	}
 
 	ex := exec.Command(args[0], args[1:]...)
