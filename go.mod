@@ -6,13 +6,16 @@ require (
 	github.com/docker/docker v20.10.16+incompatible
 	github.com/go-kit/log v0.2.1
 	github.com/spf13/cobra v1.4.0
+	github.com/stretchr/testify v1.7.0
 	golang.org/x/term v0.0.0-20210615171337-6886f2dfbf5b
 )
 
 require (
+	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/golang/protobuf v1.5.2 // indirect
 	github.com/moby/term v0.0.0-20210619224110-3f7ff695adc6 // indirect
 	github.com/morikuni/aec v1.0.0 // indirect
+	github.com/pmezard/go-difflib v1.0.0 // indirect
 	golang.org/x/text v0.3.7 // indirect
 	golang.org/x/time v0.0.0-20220411224347-583f2d630306 // indirect
 	google.golang.org/genproto v0.0.0-20211208223120-3a66f561d7aa // indirect

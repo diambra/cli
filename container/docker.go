@@ -45,7 +45,7 @@ func (r *DockerRunner) Start(c *Container) (*ContainerStatus, error) {
 		ctx    = context.Background()
 		config = &container.Config{
 			Image:      c.Image,
-			Cmd:        c.Command,
+			Cmd:        c.Args,
 			Env:        c.Env,
 			User:       c.User,
 			Tty:        true,

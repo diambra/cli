@@ -69,7 +69,7 @@ func (pm *PortMapping) AddPortMapping(containerPort string, hostPort string, hos
 type Container struct {
 	Name             string
 	Image            string
-	Command          []string
+	Args             []string
 	Env              []string
 	User             string
 	SecurityOpt      []string

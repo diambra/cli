@@ -88,9 +88,9 @@ The flag --agent-image can be used to run the commands in the given image.`,
 	cmd.Flags().StringVarP(&c.RomsPath, "romsPath", "r", defaultRomsPath, "Path to ROMs (default to DIAMBRAROMSPATH env var if set)")
 	cmd.Flags().StringVarP(&c.CredPath, "credPath", "c", filepath.Join(homedir, ".diambraCred"), "Path to credentials file")
 
-	cmd.Flags().BoolVar(&c.GUI, "gui", true, "Enable GUI")
-	cmd.Flags().BoolVar(&c.LockFPS, "lockfps", true, "Lock FPS")
-	cmd.Flags().BoolVar(&c.Audio, "audio", true, "Enable audio")
+	cmd.Flags().BoolVar(&c.AppArgs.Render, "render", false, "Render graphics server side")
+	cmd.Flags().BoolVar(&c.AppArgs.LockFPS, "lockfps", false, "Lock FPS")
+	cmd.Flags().BoolVar(&c.AppArgs.Sound, "sound", false, "Enable sound")
 
 	cmd.Flags().BoolVarP(&c.PullImage, "pull", "p", true, "(Always) pull image before running")
 
