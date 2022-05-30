@@ -54,7 +54,7 @@ func NewCmdRun() *cobra.Command {
 
 	fi, err := os.Stdout.Stat()
 	if err != nil || (fi.Mode()&os.ModeCharDevice) != 0 {
-		c.Interactive = true
+		c.Tty = true
 	}
 
 	cmd := &cobra.Command{
@@ -83,17 +83,18 @@ The flag --agent-image can be used to run the commands in the given image.`,
 	}
 	cmd.Flags().IntVarP(&c.Scale, "scale", "s", 1, "Number of environments to run")
 	cmd.Flags().BoolVarP(&c.AutoRemove, "autoremove", "x", true, "Remove containers on exit")
+	cmd.Flags().BoolVarP(&c.Interactive, "interactive", "i", true, "Open stdin for interactions with arena and agent")
 
 	cmd.Flags().StringVarP(&c.RomsPath, "romsPath", "r", defaultRomsPath, "Path to ROMs (default to DIAMBRAROMSPATH env var if set)")
 	cmd.Flags().StringVarP(&c.CredPath, "credPath", "c", filepath.Join(homedir, ".diambraCred"), "Path to credentials file")
 
-	cmd.Flags().BoolVarP(&c.GUI, "gui", "g", true, "Enable GUI")
-	cmd.Flags().BoolVarP(&c.LockFPS, "lockfps", "l", true, "Lock FPS")
-	cmd.Flags().BoolVarP(&c.Audio, "audio", "a", true, "Enable audio")
+	cmd.Flags().BoolVar(&c.GUI, "gui", true, "Enable GUI")
+	cmd.Flags().BoolVar(&c.LockFPS, "lockfps", true, "Lock FPS")
+	cmd.Flags().BoolVar(&c.Audio, "audio", true, "Enable audio")
 
 	cmd.Flags().BoolVarP(&c.PullImage, "pull", "p", true, "(Always) pull image before running")
 
-	cmd.Flags().StringVarP(&c.AgentImage, "agent.image", "i", "", "Run agent in container")
+	cmd.Flags().StringVarP(&c.AgentImage, "agent.image", "a", "", "Run agent in container")
 	cmd.Flags().StringVarP(&c.Image, "env.image", "e", DefaultEnvImage, "Env image to use")
 	cmd.Flags().StringVar(&c.SeccompProfile, "env.seccomp", "unconfined", "Path to seccomp profile to use for env (may slow down environment). Set to \"\" for runtime's default profile.")
 
@@ -153,7 +154,9 @@ func RunFn(c *diambra.EnvConfig, args []string) error {
 	ex := exec.Command(args[0], args[1:]...)
 	ex.Env = os.Environ()
 	ex.Env = append(ex.Env, fmt.Sprintf("DIAMBRA_ENVS=%s", envs))
-	ex.Stdin = os.Stdin
+	if c.Interactive {
+		ex.Stdin = os.Stdin
+	}
 	ex.Stdout = os.Stdout
 	ex.Stderr = os.Stderr
 	level.Debug(logger).Log("msg", "running command", "args", fmt.Sprintf("%#v", args), "env", fmt.Sprintf("%#v", ex.Env))
