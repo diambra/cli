@@ -1,7 +1,6 @@
 package diambra
 
 import (
-	"io"
 	"strconv"
 )
 
@@ -52,6 +51,5 @@ type EnvConfig struct {
 	SeccompProfile string
 	Tty            bool // stdin is a terminal
 	Interactive    bool // interaction requested
-	Stdout         io.Writer
-	Stderr         io.Writer
+
 }
