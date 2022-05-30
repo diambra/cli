@@ -9,10 +9,10 @@ import (
 	"strings"
 	"time"
 
-	"golang.org/x/term"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 
+	"github.com/containerd/console"
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 
@@ -136,10 +136,21 @@ func (d *Diambra) Start() error {
 				return err
 			}
 
-			termState, err := term.MakeRaw(int(os.Stdout.Fd()))
-			if err != nil {
-				return fmt.Errorf("couldn't set term to raw: %w", err)
+			term := console.Current()
+			if err := term.SetRaw(); err != nil {
+				return err
 			}
+			ws, err := term.Size()
+			if err != nil {
+				return err
+			}
+			term.Resize(ws)
+
+			/*
+				termState, err := term.MakeRaw(int(os.Stdout.Fd()))
+				if err != nil {
+					return fmt.Errorf("couldn't set term to raw: %w", err)
+				}*/
 			go func() {
 				io.Copy(wc, os.Stdin)
 			}()
@@ -152,7 +163,8 @@ func (d *Diambra) Start() error {
 			level.Debug(d.Logger).Log("msg", "closing streamer")
 			wc.Close()
 			rc.Close()
-			term.Restore(int(os.Stdout.Fd()), termState)
+			term.Reset()
+			///term.Restore(int(os.Stdout.Fd()), termState)
 
 			// FIXME: We should just call Render() automatically from the Writer
 			/*
