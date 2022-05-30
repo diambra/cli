@@ -113,18 +113,24 @@ func (d *Diambra) Start() error {
 
 		// On first env we wait for the container to start, attach to it until the grpc port is open.
 		// This allows diambraEngine to ask for credentials if they don't exist/are expired.
-		if first && d.config.Interactive {
+		if first && d.config.Tty {
 			wc, rc, err := d.Runner.Attach(cs.ID)
 			if err != nil {
 				return err
+			}
+			// Disable stdin -> container when not interactive
+			if !d.config.Interactive {
+				wc = nil
 			}
 			streamer := container.NewStreamer(d.Logger, wc, rc)
 			if _, _, err := streamer.Stream(); err != nil {
 				return fmt.Errorf("couldn't attach to container: %w", err)
 			}
-
+			level.Debug(d.Logger).Log("msg", "waiting for grpc")
 			d.waitForGRPC(env.Address)
+			level.Debug(d.Logger).Log("msg", "closing streamer")
 			streamer.Close()
+			level.Debug(d.Logger).Log("msg", "closed streamer")
 
 			// FIXME: We should just call Render() automatically from the Writer
 			/*
@@ -200,6 +206,10 @@ func (e *Diambra) StartAgent(image string, args []string) error {
 	wc, rc, err := e.Runner.Attach(cs.ID)
 	if err != nil {
 		return err
+	}
+	// Disable stdin -> container when not interactive
+	if !e.config.Interactive {
+		wc = nil
 	}
 	streamer := container.NewStreamer(e.Logger, wc, rc)
 	wcErr, rcErr, err := streamer.Stream()

@@ -17,7 +17,8 @@ type EnvConfig struct {
 
 	User           string
 	SeccompProfile string
-	Interactive    bool
+	Tty            bool // stdin is a terminal
+	Interactive    bool // interaction requested
 	Stdout         io.Writer
 	Stderr         io.Writer
 }
