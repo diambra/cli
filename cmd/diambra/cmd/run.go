@@ -15,6 +15,7 @@ import (
 	"syscall"
 
 	"github.com/diambra/cli/diambra"
+
 	"github.com/go-kit/log/level"
 	"github.com/spf13/cobra"
 )
@@ -47,9 +48,7 @@ func NewCmdRun() *cobra.Command {
 		os.Exit(1)
 	}
 	c := &diambra.EnvConfig{
-		Stdout: os.Stdout,
-		Stderr: os.Stderr,
-		User:   userName,
+		User: userName,
 	}
 
 	fi, err := os.Stdout.Stat()
@@ -121,7 +120,8 @@ func RunFn(c *diambra.EnvConfig, args []string) error {
 		fh.Close()
 	}
 
-	d, err := diambra.NewDiambra(logger, c)
+	//streamer := ui.NewStreamer(logger, os.Stdin, os.Stdout)
+	d, err := diambra.NewDiambra(logger, c) //, streamer)
 	if err != nil {
 		return fmt.Errorf("couldn't create DIAMBRA Env: %w", err)
 	}
@@ -136,6 +136,7 @@ func RunFn(c *diambra.EnvConfig, args []string) error {
 		}
 		os.Exit(1)
 	}()
+
 	level.Debug(logger).Log("msg", "starting DIAMBRA env")
 	if err := d.Start(); err != nil {
 		return fmt.Errorf("could't start DIAMBRA Env: %w", err)
@@ -155,6 +156,7 @@ func RunFn(c *diambra.EnvConfig, args []string) error {
 	ex.Env = os.Environ()
 	ex.Env = append(ex.Env, fmt.Sprintf("DIAMBRA_ENVS=%s", envs))
 	if c.Interactive {
+		// streamer.Stream(nil, ex.Stdin)
 		ex.Stdin = os.Stdin
 	}
 	ex.Stdout = os.Stdout

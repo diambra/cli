@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"golang.org/x/term"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 
@@ -32,7 +33,10 @@ type Diambra struct {
 	container.Runner
 	Envs   []*Env
 	config *EnvConfig
+	// streamer *ui.Streamer
 }
+
+// func NewDiambra(logger log.Logger, config *EnvConfig, streamer *ui.Streamer) (*Diambra, error) {
 
 func NewDiambra(logger log.Logger, config *EnvConfig) (*Diambra, error) {
 	runner, err := container.NewDockerRunner(logger, config.AutoRemove)
@@ -103,6 +107,7 @@ func (d *Diambra) RandInt() (int, error) {
 	}
 	return int(n.Uint64()), nil
 }
+
 func (d *Diambra) Start() error {
 	first := true
 	agentLogger := d.Logger //e.Screen.NewTab())
@@ -125,23 +130,29 @@ func (d *Diambra) Start() error {
 
 		// On first env we wait for the container to start, attach to it until the grpc port is open.
 		// This allows diambraEngine to ask for credentials if they don't exist/are expired.
-		if first && d.config.Tty {
+		if first && d.config.Tty && d.config.Interactive {
 			wc, rc, err := d.Runner.Attach(cs.ID)
 			if err != nil {
 				return err
 			}
-			// Disable stdin -> container when not interactive
-			if !d.config.Interactive {
-				wc = nil
+
+			termState, err := term.MakeRaw(int(os.Stdout.Fd()))
+			if err != nil {
+				return fmt.Errorf("couldn't set term to raw: %w", err)
 			}
-			streamer := container.NewStreamer(d.Logger, wc, rc)
-			if err := streamer.Stream(); err != nil {
-				return fmt.Errorf("couldn't attach to container: %w", err)
-			}
+			go func() {
+				io.Copy(wc, os.Stdin)
+			}()
+			go func() {
+				io.Copy(os.Stdout, rc)
+			}()
+
 			level.Debug(d.Logger).Log("msg", "waiting for grpc")
 			d.waitForGRPC(env.Address)
 			level.Debug(d.Logger).Log("msg", "closing streamer")
-			streamer.Close()
+			wc.Close()
+			rc.Close()
+			term.Restore(int(os.Stdout.Fd()), termState)
 
 			// FIXME: We should just call Render() automatically from the Writer
 			/*
@@ -152,7 +163,6 @@ func (d *Diambra) Start() error {
 					}
 				}()*/
 		}
-
 		go func(id string) {
 			level.Debug(d.Logger).Log("msg", "in go func")
 			if err := d.Runner.LogLogs(id, log.With(agentLogger, "id", id)); err != nil {
@@ -203,6 +213,7 @@ func (e *Diambra) Cleanup() error {
 }
 
 func (e *Diambra) RunAgentImage(image string, args []string) error {
+	level.Debug(e.Logger).Log("msg", "running in container", "image", image, "args", fmt.Sprintf("%v", args))
 	envs, err := e.EnvsStringContainer()
 	if err != nil {
 		return err
@@ -221,17 +232,31 @@ func (e *Diambra) RunAgentImage(image string, args []string) error {
 	if err != nil {
 		return err
 	}
-	// Disable stdin -> container when not interactive
-	if !e.config.Interactive {
-		wc = nil
-	}
-	streamer := container.NewStreamer(e.Logger, wc, rc)
-	if err := streamer.Stream(); err != nil {
-		return err
-	}
-	defer streamer.Close()
-	if err := e.Runner.Wait(cs.ID); err != nil {
+	/*
+		termState, err := term.MakeRaw(int(os.Stdout.Fd()))
+		if err != nil {
+			return fmt.Errorf("couldn't set term to raw: %w", err)
+		}
+		defer term.Restore(int(os.Stdout.Fd()), termState)
+	*/
+	go func() {
+		io.Copy(wc, os.Stdin)
+	}()
+	doneCh := make(chan struct{})
+	go func() {
+		io.Copy(os.Stdout, rc)
+		doneCh <- struct{}{}
+	}()
+
+	level.Debug(e.Logger).Log("msg", "waiting for container to exit")
+	err = e.Runner.Wait(cs.ID)
+	if err != nil {
 		return fmt.Errorf("couldn't wait for container to finish: %w", err)
 	}
+	wc.Close()
+	//rc.Close()
+	level.Debug(e.Logger).Log("msg", "waiting for stdout to close")
+	<-doneCh
+
 	return nil
 }
