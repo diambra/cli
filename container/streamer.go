@@ -14,6 +14,8 @@ type streamer struct {
 	log.Logger
 	wc        io.WriteCloser
 	rc        io.ReadCloser
+	wcErr     chan error
+	rcErr     chan error
 	termState *term.State
 	closeCh   chan struct{}
 	done      bool
@@ -25,6 +27,8 @@ func NewStreamer(logger log.Logger, wc io.WriteCloser, rc io.ReadCloser) *stream
 		Logger:  logger,
 		wc:      wc,
 		rc:      rc,
+		wcErr:   make(chan error),
+		rcErr:   make(chan error),
 		closeCh: make(chan struct{}),
 	}
 }
@@ -33,7 +37,7 @@ func (s *streamer) MakeRaw() (err error) {
 	if s.wc == nil {
 		return nil
 	}
-	level.Debug(s.Logger).Log("Setting stdout to raw")
+	level.Debug(s.Logger).Log("msg", "Setting stdout to raw")
 	s.termState, err = term.MakeRaw(int(os.Stdout.Fd()))
 	return err
 }
@@ -44,22 +48,19 @@ func (s *streamer) Restore() error {
 	return term.Restore(int(os.Stdout.Fd()), s.termState)
 }
 
-func (s *streamer) Stream() (<-chan error, <-chan error, error) {
-	var (
-		wcErr = make(chan error)
-		rcErr = make(chan error)
-	)
+func (s *streamer) Stream() error {
+	var ()
 	level.Debug(s.Logger).Log("msg", "starting stream")
 	if err := s.MakeRaw(); err != nil {
-		return nil, nil, err
+		return err
 	}
 	go func() {
 		<-s.closeCh
-		s.done = true // set done to ignore close errors. FIXME: Is there a better way?
 		if s.wc != nil {
 			s.wc.Close()
 		}
 		s.rc.Close()
+		level.Debug(s.Logger).Log("msg", "closed wc and rc")
 	}()
 
 	go func() {
@@ -68,7 +69,9 @@ func (s *streamer) Stream() (<-chan error, <-chan error, error) {
 		if !s.done && err != nil {
 			level.Warn(s.Logger).Log("msg", "copy output failed", "err", err.Error())
 		}
-		rcErr <- err
+		level.Debug(s.Logger).Log("msg", "copying to stdout done, signaling")
+		s.rcErr <- err
+		level.Debug(s.Logger).Log("msg", "signaled")
 	}()
 
 	go func() {
@@ -80,12 +83,31 @@ func (s *streamer) Stream() (<-chan error, <-chan error, error) {
 		if !s.done && err != nil {
 			level.Warn(s.Logger).Log("msg", "copy input failed", "err", err.Error())
 		}
-		wcErr <- err
+		level.Debug(s.Logger).Log("msg", "copying to stdin done, signaling")
+		s.wcErr <- err
+		level.Debug(s.Logger).Log("msg", "signaled")
 	}()
 	level.Debug(s.Logger).Log("msg", "returning stream")
-	return wcErr, rcErr, nil
+	return nil
 }
 
 func (s *streamer) Close() {
+	s.done = true // set done to ignore close errors. FIXME: Is there a better way?
 	s.closeCh <- struct{}{}
+
+	var (
+		wcDone = false
+		rcDone = false
+	)
+	for {
+		if wcDone && rcDone {
+			return
+		}
+		select {
+		case <-s.wcErr:
+			rcDone = true
+		case <-s.rcErr:
+			wcDone = true
+		}
+	}
 }

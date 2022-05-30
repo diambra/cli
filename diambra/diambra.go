@@ -1,8 +1,10 @@
 package diambra
 
 import (
+	"crypto/rand"
 	"fmt"
 	"io"
+	"math/big"
 	"os"
 	"strings"
 	"time"
@@ -94,13 +96,23 @@ func (e *Diambra) waitForGRPC(addr container.Address) error {
 		return nil
 	}
 }
-
+func (d *Diambra) RandInt() (int, error) {
+	n, err := rand.Int(rand.Reader, big.NewInt(0xFFFF))
+	if err != nil {
+		return 0, err
+	}
+	return int(n.Uint64()), nil
+}
 func (d *Diambra) Start() error {
 	first := true
 	agentLogger := d.Logger //e.Screen.NewTab())
 	for i := 0; i < d.config.Scale; i++ {
 		level.Debug(d.Logger).Log("msg", "creating env container", "envID", i)
-		cs, err := d.Runner.Start(newEnvContainer(d.config, i))
+		randomSeed, err := d.RandInt()
+		if err != nil {
+			return fmt.Errorf("couldn't generate random seed: %w", err)
+		}
+		cs, err := d.Runner.Start(newEnvContainer(d.config, i, randomSeed))
 		if err != nil {
 			return fmt.Errorf("couldn't start env container: %w", err)
 		}
@@ -123,14 +135,13 @@ func (d *Diambra) Start() error {
 				wc = nil
 			}
 			streamer := container.NewStreamer(d.Logger, wc, rc)
-			if _, _, err := streamer.Stream(); err != nil {
+			if err := streamer.Stream(); err != nil {
 				return fmt.Errorf("couldn't attach to container: %w", err)
 			}
 			level.Debug(d.Logger).Log("msg", "waiting for grpc")
 			d.waitForGRPC(env.Address)
 			level.Debug(d.Logger).Log("msg", "closing streamer")
 			streamer.Close()
-			level.Debug(d.Logger).Log("msg", "closed streamer")
 
 			// FIXME: We should just call Render() automatically from the Writer
 			/*
@@ -156,14 +167,17 @@ func (d *Diambra) Start() error {
 	return nil
 }
 
-func newEnvContainer(config *EnvConfig, envID int) *container.Container {
+func newEnvContainer(config *EnvConfig, envID, randomSeed int) *container.Container {
 	pm := &container.PortMapping{}
 	pm.AddPortMapping(ContainerPort, "0/tcp", "127.0.0.1")
 
+	args := config.AppArgs
+	args.RandomSeed = randomSeed
 	c := &container.Container{
 		Name:        fmt.Sprintf("arena-%3d", envID),
 		Image:       config.Image,
 		User:        config.User,
+		Args:        args.Args(),
 		PortMapping: pm,
 		BindMounts: []*container.BindMount{
 			container.NewBindMount(config.CredPath, "/tmp/.diambraCred"),
@@ -194,10 +208,10 @@ func (e *Diambra) StartAgent(image string, args []string) error {
 		return err
 	}
 	c := &container.Container{
-		Name:    "agent",
-		Image:   image,
-		Command: args,
-		Env:     []string{"DIAMBRA_ENVS=" + envs},
+		Name:  "agent",
+		Image: image,
+		Args:  args,
+		Env:   []string{"DIAMBRA_ENVS=" + envs},
 	}
 	cs, err := e.Runner.Start(c)
 	if err != nil {
@@ -212,20 +226,8 @@ func (e *Diambra) StartAgent(image string, args []string) error {
 		wc = nil
 	}
 	streamer := container.NewStreamer(e.Logger, wc, rc)
-	wcErr, rcErr, err := streamer.Stream()
-	if err != nil {
+	if err := streamer.Stream(); err != nil {
 		return err
 	}
-	select {
-	case err := <-wcErr:
-		if err != nil {
-			return fmt.Errorf("container writer failed: %w", err)
-		}
-		return nil
-	case err := <-rcErr:
-		if err != nil {
-			return fmt.Errorf("container reader failed: %w", err)
-		}
-		return nil
-	}
+	return nil
 }
