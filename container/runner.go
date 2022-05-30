@@ -90,4 +90,5 @@ type Runner interface {
 	LogLogs(id string, logger log.Logger) error
 	Stop(id string) error
 	Attach(id string) (io.WriteCloser, io.ReadCloser, error)
+	Wait(id string) error
 }
