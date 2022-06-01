@@ -6,6 +6,7 @@ package cmd
 
 import (
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"os/signal"
@@ -14,7 +15,9 @@ import (
 	"runtime"
 	"syscall"
 
+	"github.com/diambra/cli/container"
 	"github.com/diambra/cli/diambra"
+	"github.com/docker/docker/client"
 
 	"github.com/go-kit/log/level"
 	"github.com/spf13/cobra"
@@ -121,7 +124,21 @@ func RunFn(c *diambra.EnvConfig, args []string) error {
 	}
 
 	//streamer := ui.NewStreamer(logger, os.Stdin, os.Stdout)
-	d, err := diambra.NewDiambra(logger, c) //, streamer)
+	client, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
+	if err != nil {
+		return err
+	}
+	runner := container.NewDockerRunner(logger, client, c.AutoRemove)
+	if c.PullImage {
+		reader, err := runner.PullImage(c.Image)
+		if err != nil {
+			return fmt.Errorf("couldn't pull image %s: %w", c.Image, err)
+		}
+		defer reader.Close()
+		io.Copy(os.Stderr, reader)
+	}
+
+	d, err := diambra.NewDiambra(logger, runner, c) //, streamer)
 	if err != nil {
 		return fmt.Errorf("couldn't create DIAMBRA Env: %w", err)
 	}

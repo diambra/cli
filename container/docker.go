@@ -23,17 +23,13 @@ type DockerRunner struct {
 	AutoRemove  bool
 }
 
-func NewDockerRunner(logger log.Logger, autoRemove bool) (*DockerRunner, error) {
-	client, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
-	if err != nil {
-		return nil, err
-	}
+func NewDockerRunner(logger log.Logger, client *client.Client, autoRemove bool) *DockerRunner {
 	return &DockerRunner{
 		Logger:      logger,
 		Client:      client,
 		TimeoutStop: 10 * time.Second,
 		AutoRemove:  autoRemove,
-	}, nil
+	}
 }
 
 func (r *DockerRunner) PullImage(name string) (io.ReadCloser, error) {
