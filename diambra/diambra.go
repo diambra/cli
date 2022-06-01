@@ -38,19 +38,7 @@ type Diambra struct {
 
 // func NewDiambra(logger log.Logger, config *EnvConfig, streamer *ui.Streamer) (*Diambra, error) {
 
-func NewDiambra(logger log.Logger, config *EnvConfig) (*Diambra, error) {
-	runner, err := container.NewDockerRunner(logger, config.AutoRemove)
-	if err != nil {
-		return nil, fmt.Errorf("couldn't create runner: %w", err)
-	}
-	if config.PullImage {
-		reader, err := runner.PullImage(config.Image)
-		if err != nil {
-			return nil, fmt.Errorf("couldn't pull image %s: %w", config.Image, err)
-		}
-		defer reader.Close()
-		io.Copy(os.Stderr, reader)
-	}
+func NewDiambra(logger log.Logger, runner container.Runner, config *EnvConfig) (*Diambra, error) {
 	return &Diambra{
 		Logger: logger,
 		Runner: runner,
