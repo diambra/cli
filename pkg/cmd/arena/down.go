@@ -2,7 +2,7 @@
 Copyright © 2022 NAME HERE <EMAIL ADDRESS>
 
 */
-package cmd
+package arena
 
 import (
 	"fmt"
@@ -10,15 +10,11 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var downCmd = &cobra.Command{
+var DownCmd = &cobra.Command{
 	Use:   "down",
 	Short: "Stop DIAMBRA Arena",
 	Long:  `This stops a DIAMBRA Arena running in the background.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		fmt.Println("down called")
 	},
-}
-
-func init() {
-	arenaCmd.AddCommand(downCmd)
 }
