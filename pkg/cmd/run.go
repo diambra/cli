@@ -15,8 +15,8 @@ import (
 	"runtime"
 	"syscall"
 
-	"github.com/diambra/cli/container"
-	"github.com/diambra/cli/diambra"
+	"github.com/diambra/cli/pkg/container"
+	"github.com/diambra/cli/pkg/diambra"
 	"github.com/docker/docker/client"
 
 	"github.com/go-kit/log"
