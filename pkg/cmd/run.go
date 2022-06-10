@@ -133,7 +133,7 @@ func RunFn(logger log.Logger, c *diambra.EnvConfig, args []string) error {
 	if c.PullImage {
 		reader, err := runner.PullImage(c.Image)
 		if err != nil {
-			return fmt.Errorf("couldn't pull image %s: %w", c.Image, err)
+			return fmt.Errorf("couldn't pull image %s: %w:\nTo disable pulling the image on start, retry with --pull=false", c.Image, err)
 		}
 		defer reader.Close()
 		io.Copy(os.Stderr, reader)
