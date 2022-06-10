@@ -134,11 +134,6 @@ func (d *Diambra) Start() error {
 			}
 			term.Resize(ws)
 
-			/*
-				termState, err := term.MakeRaw(int(os.Stdout.Fd()))
-				if err != nil {
-					return fmt.Errorf("couldn't set term to raw: %w", err)
-				}*/
 			go func() {
 				io.Copy(wc, os.Stdin)
 			}()
@@ -152,7 +147,6 @@ func (d *Diambra) Start() error {
 			wc.Close()
 			rc.Close()
 			term.Reset()
-			///term.Restore(int(os.Stdout.Fd()), termState)
 
 			// FIXME: We should just call Render() automatically from the Writer
 			/*
@@ -232,13 +226,7 @@ func (e *Diambra) RunAgentImage(image string, args []string) error {
 	if err != nil {
 		return err
 	}
-	/*
-		termState, err := term.MakeRaw(int(os.Stdout.Fd()))
-		if err != nil {
-			return fmt.Errorf("couldn't set term to raw: %w", err)
-		}
-		defer term.Restore(int(os.Stdout.Fd()), termState)
-	*/
+
 	go func() {
 		io.Copy(wc, os.Stdin)
 	}()

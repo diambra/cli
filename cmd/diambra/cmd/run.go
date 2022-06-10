@@ -71,10 +71,14 @@ The flag --agent-image can be used to run the commands in the given image.`,
 		Run: func(cmd *cobra.Command, args []string) {
 			level.Debug(logger).Log("config", fmt.Sprintf("%#v", c))
 			if err := RunFn(c, args); err != nil {
-				level.Error(logger).Log("msg", "command failed", "err", err.Error())
 				if exitErr, ok := err.(*exec.ExitError); ok {
-					os.Exit(exitErr.ExitCode())
+					code := exitErr.ExitCode()
+					if code != 0 {
+						level.Error(logger).Log("msg", "command failed", "err", err.Error())
+					}
+					os.Exit(code)
 				}
+				level.Error(logger).Log("msg", "command failed", "err", err.Error())
 				os.Exit(1)
 			}
 		},
@@ -173,7 +177,6 @@ func RunFn(c *diambra.EnvConfig, args []string) error {
 	ex.Env = os.Environ()
 	ex.Env = append(ex.Env, fmt.Sprintf("DIAMBRA_ENVS=%s", envs))
 	if c.Interactive {
-		// streamer.Stream(nil, ex.Stdin)
 		ex.Stdin = os.Stdin
 	}
 	ex.Stdout = os.Stdout
