@@ -19,6 +19,7 @@ import (
 	"github.com/diambra/cli/diambra"
 	"github.com/docker/docker/client"
 
+	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	"github.com/spf13/cobra"
 )
@@ -35,7 +36,7 @@ func pathExists(path string) bool {
 	return true
 }
 
-func NewCmdRun() *cobra.Command {
+func NewCmdRun(logger log.Logger) *cobra.Command {
 	userName := ""
 	if runtime.GOOS != "windows" {
 		u, err := user.Current()
@@ -70,7 +71,7 @@ The flag --agent-image can be used to run the commands in the given image.`,
 		Args: cobra.MinimumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			level.Debug(logger).Log("config", fmt.Sprintf("%#v", c))
-			if err := RunFn(c, args); err != nil {
+			if err := RunFn(logger, c, args); err != nil {
 				if exitErr, ok := err.(*exec.ExitError); ok {
 					code := exitErr.ExitCode()
 					if code != 0 {
@@ -110,11 +111,7 @@ The flag --agent-image can be used to run the commands in the given image.`,
 	return cmd
 }
 
-func init() {
-	rootCmd.AddCommand(NewCmdRun())
-}
-
-func RunFn(c *diambra.EnvConfig, args []string) error {
+func RunFn(logger log.Logger, c *diambra.EnvConfig, args []string) error {
 	level.Debug(logger).Log("config", fmt.Sprintf("%#v", c))
 	if !pathExists(c.RomsPath) {
 		return fmt.Errorf("romsPath %s does not exist. Is --romsPath set correctly?", c.RomsPath)
