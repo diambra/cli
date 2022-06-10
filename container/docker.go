@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"strconv"
 	"time"
 
 	"github.com/docker/docker/api/types"
@@ -105,7 +106,11 @@ func (l *logWriter) Write(p []byte) (n int, err error) {
 
 func (r *DockerRunner) LogLogs(id string, logger log.Logger) error {
 	ctx := context.TODO()
-	out, err := r.Client.ContainerLogs(ctx, id, types.ContainerLogsOptions{ShowStdout: true, Follow: true})
+	out, err := r.Client.ContainerLogs(ctx, id, types.ContainerLogsOptions{
+		ShowStdout: true,
+		Follow:     true,
+		Since:      strconv.Itoa(int(time.Now().Unix())),
+	})
 	if err != nil {
 		return err
 	}
