@@ -51,8 +51,14 @@ func NewCmdRun(logger log.Logger) *cobra.Command {
 		level.Error(logger).Log("msg", "couldn't get homedir", "err", err.Error())
 		os.Exit(1)
 	}
+	hostname, err := os.Hostname()
+	if err != nil {
+		level.Error(logger).Log("msg", "couldn't get hostname", "err", err.Error())
+	}
 	c := &diambra.EnvConfig{
-		User: userName,
+		User:     userName,
+		Home:     homedir,
+		Hostname: hostname,
 	}
 
 	fi, err := os.Stdout.Stat()

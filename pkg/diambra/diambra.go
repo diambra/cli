@@ -6,6 +6,7 @@ import (
 	"io"
 	"math/big"
 	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -96,77 +97,85 @@ func (d *Diambra) RandInt() (int, error) {
 	return int(n.Uint64()), nil
 }
 
+func (d *Diambra) start(envId int, first bool) error {
+	agentLogger := d.Logger //e.Screen.NewTab())
+	level.Debug(d.Logger).Log("msg", "creating env container", "envID", envId)
+	randomSeed, err := d.RandInt()
+	if err != nil {
+		return fmt.Errorf("couldn't generate random seed: %w", err)
+	}
+	cs, err := d.Runner.Start(newEnvContainer(d.config, envId, randomSeed))
+	if err != nil {
+		return fmt.Errorf("couldn't start env container: %w", err)
+	}
+	level.Debug(d.Logger).Log("msg", "started env container", "id", cs.ID)
+	env := &Env{
+		ContainerStatus: cs,
+		Address:         (*cs.PortMapping)[ContainerPort],
+	}
+	d.Envs = append(d.Envs, env)
+
+	// On first env we wait for the container to start, attach to it until the grpc port is open.
+	// This allows diambraEngine to ask for credentials if they don't exist/are expired.
+	if first && d.config.Tty && d.config.Interactive {
+		wc, rc, err := d.Runner.Attach(cs.ID)
+		if err != nil {
+			return err
+		}
+
+		term := console.Current()
+		if err := term.SetRaw(); err != nil {
+			return err
+		}
+		ws, err := term.Size()
+		if err != nil {
+			return err
+		}
+		term.Resize(ws)
+
+		go func() {
+			io.Copy(wc, os.Stdin)
+		}()
+		go func() {
+			io.Copy(os.Stdout, rc)
+		}()
+
+		level.Debug(d.Logger).Log("msg", "waiting for grpc")
+		d.waitForGRPC(env.Address)
+		level.Debug(d.Logger).Log("msg", "closing streamer")
+		wc.Close()
+		rc.Close()
+		term.Reset()
+
+		// FIXME: We should just call Render() automatically from the Writer
+		/*
+			go func() {
+				ticker := time.NewTicker(500 * time.Millisecond) // ~30 fps
+				for range ticker.C {
+					e.Screen.Render()
+				}
+			}()*/
+	}
+	go func(id string) {
+		level.Debug(d.Logger).Log("msg", "in go func")
+		if err := d.Runner.LogLogs(id, log.With(agentLogger, "id", id)); err != nil {
+			level.Warn(d.Logger).Log("msg", "LogLogs failed", "err", err.Error())
+		}
+		level.Debug(d.Logger).Log("msg", "end of go func")
+	}(cs.ID)
+
+	level.Debug(d.Logger).Log("msg", "logs copying..")
+	return nil
+}
+
 func (d *Diambra) Start() error {
 	first := true
-	agentLogger := d.Logger //e.Screen.NewTab())
 	for i := 0; i < d.config.Scale; i++ {
-		level.Debug(d.Logger).Log("msg", "creating env container", "envID", i)
-		randomSeed, err := d.RandInt()
-		if err != nil {
-			return fmt.Errorf("couldn't generate random seed: %w", err)
+		if err := d.start(i, first); err != nil {
+			return err
 		}
-		cs, err := d.Runner.Start(newEnvContainer(d.config, i, randomSeed))
-		if err != nil {
-			return fmt.Errorf("couldn't start env container: %w", err)
-		}
-		level.Debug(d.Logger).Log("msg", "started env container", "id", cs.ID)
-		env := &Env{
-			ContainerStatus: cs,
-			Address:         (*cs.PortMapping)[ContainerPort],
-		}
-		d.Envs = append(d.Envs, env)
-
-		// On first env we wait for the container to start, attach to it until the grpc port is open.
-		// This allows diambraEngine to ask for credentials if they don't exist/are expired.
-		if first && d.config.Tty && d.config.Interactive {
-			wc, rc, err := d.Runner.Attach(cs.ID)
-			if err != nil {
-				return err
-			}
-
-			term := console.Current()
-			if err := term.SetRaw(); err != nil {
-				return err
-			}
-			ws, err := term.Size()
-			if err != nil {
-				return err
-			}
-			term.Resize(ws)
-
-			go func() {
-				io.Copy(wc, os.Stdin)
-			}()
-			go func() {
-				io.Copy(os.Stdout, rc)
-			}()
-
-			level.Debug(d.Logger).Log("msg", "waiting for grpc")
-			d.waitForGRPC(env.Address)
-			level.Debug(d.Logger).Log("msg", "closing streamer")
-			wc.Close()
-			rc.Close()
-			term.Reset()
-
-			// FIXME: We should just call Render() automatically from the Writer
-			/*
-				go func() {
-					ticker := time.NewTicker(500 * time.Millisecond) // ~30 fps
-					for range ticker.C {
-						e.Screen.Render()
-					}
-				}()*/
-		}
-		go func(id string) {
-			level.Debug(d.Logger).Log("msg", "in go func")
-			if err := d.Runner.LogLogs(id, log.With(agentLogger, "id", id)); err != nil {
-				level.Warn(d.Logger).Log("msg", "LogLogs failed", "err", err.Error())
-			}
-			level.Debug(d.Logger).Log("msg", "end of go func")
-		}(cs.ID)
-
-		level.Debug(d.Logger).Log("msg", "logs copying..")
 		first = false
+
 	}
 	return nil
 }
@@ -187,6 +196,19 @@ func newEnvContainer(config *EnvConfig, envID, randomSeed int) *container.Contai
 			container.NewBindMount(config.CredPath, "/tmp/.diambraCred"),
 			container.NewBindMount(config.RomsPath, "/opt/diambraArena/roms"),
 		},
+	}
+
+	if config.AppArgs.Render {
+		xauthority := filepath.Join(config.Home, ".Xauthority")
+		if xap := os.Getenv("XAUTHORITY"); xap != "" {
+			xauthority = xap
+		}
+		c.BindMounts = append(c.BindMounts,
+			container.NewBindMount("/tmp/.X11-unix", "/tmp/.X11-unix"),
+			container.NewBindMount(xauthority, "/tmp/.Xauthority"),
+		)
+		c.Hostname = config.Hostname
+		c.Env = append(c.Env, "DISPLAY="+os.Getenv("DISPLAY"))
 	}
 	if config.SeccompProfile != "" {
 		c.SecurityOpt = []string{"seccomp=" + config.SeccompProfile}
