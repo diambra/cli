@@ -77,6 +77,7 @@ type Container struct {
 	CPULimitCores    float64
 	BindMounts       []*BindMount
 	PortMapping      *PortMapping
+	Hostname         string
 }
 
 type ContainerStatus struct {
