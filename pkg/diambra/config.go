@@ -52,4 +52,6 @@ type EnvConfig struct {
 	Tty            bool // stdin is a terminal
 	Interactive    bool // interaction requested
 
+	Home     string
+	Hostname string
 }
