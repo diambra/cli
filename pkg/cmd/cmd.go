@@ -7,13 +7,13 @@ package cmd
 import (
 	"github.com/diambra/cli/pkg/cmd/agent"
 	"github.com/diambra/cli/pkg/cmd/arena"
-
-	"github.com/go-kit/log"
+	"github.com/diambra/cli/pkg/log"
 	"github.com/go-kit/log/level"
+
 	"github.com/spf13/cobra"
 )
 
-func NewDiambraCommand(logger log.Logger) *cobra.Command {
+func NewDiambraCommand(logger *log.Logger) *cobra.Command {
 	var (
 		debug = false
 		cmd   = &cobra.Command{
@@ -24,14 +24,9 @@ func NewDiambraCommand(logger log.Logger) *cobra.Command {
 - Run 'diambra run ./agent.py' to bring up DIAMBRA arena and run agent.py
 `,
 			PersistentPreRun: func(cmd *cobra.Command, args []string) {
-				if debug {
-					level.Info(logger).Log("msg", "debug enabled")
-					logger = level.NewFilter(logger, level.AllowDebug())
-				} else {
-					logger = level.NewFilter(logger, level.AllowInfo())
+				if !debug {
+					logger.SetLogLevel(level.AllowInfo())
 				}
-				logger = log.With(logger, "caller", log.Caller(3))
-
 			},
 		}
 	)
