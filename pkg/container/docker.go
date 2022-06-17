@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"os"
 	"strconv"
 	"time"
 
@@ -22,22 +23,28 @@ type DockerRunner struct {
 	*client.Client
 	TimeoutStop time.Duration
 	AutoRemove  bool
+	PullImage   bool
 }
 
-func NewDockerRunner(logger log.Logger, client *client.Client, autoRemove bool) *DockerRunner {
+func NewDockerRunner(logger log.Logger, client *client.Client, autoRemove, pullImage bool) *DockerRunner {
 	return &DockerRunner{
 		Logger:      logger,
 		Client:      client,
 		TimeoutStop: 10 * time.Second,
 		AutoRemove:  autoRemove,
+		PullImage:   pullImage,
 	}
 }
 
-func (r *DockerRunner) PullImage(name string) (io.ReadCloser, error) {
-	return r.Client.ImagePull(context.TODO(), name, types.ImagePullOptions{})
-}
-
 func (r *DockerRunner) Start(c *Container) (*ContainerStatus, error) {
+	if r.PullImage {
+		reader, err := r.Client.ImagePull(context.TODO(), c.Image, types.ImagePullOptions{})
+		if err != nil {
+			return nil, fmt.Errorf("couldn't pull image %s: %w:\nTo disable pulling the image on start, retry with --pull=false", c.Image, err)
+		}
+		defer reader.Close()
+		io.Copy(os.Stderr, reader)
+	}
 	var (
 		ctx    = context.Background()
 		config = &container.Config{

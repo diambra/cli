@@ -6,13 +6,9 @@ package cmd
 
 import (
 	"fmt"
-	"io"
 	"os"
 	"os/exec"
 	"os/signal"
-	"os/user"
-	"path/filepath"
-	"runtime"
 	"syscall"
 
 	"github.com/diambra/cli/pkg/container"
@@ -24,43 +20,12 @@ import (
 	"github.com/spf13/cobra"
 )
 
-const DefaultEnvImage = "diambra/engine:main"
-
-func pathExists(path string) bool {
-	if _, err := os.Stat(path); err != nil {
-		if os.IsNotExist(err) {
-			return false
-		}
-		panic(err)
-	}
-	return true
-}
-
 func NewCmdRun(logger *log.Logger) *cobra.Command {
-	userName := ""
-	if runtime.GOOS != "windows" {
-		u, err := user.Current()
-		if err != nil {
-			level.Error(logger).Log("msg", "couldn't get user", "err", err.Error())
-			os.Exit(1)
-		}
-		userName = u.Uid
-	}
-	homedir, err := os.UserHomeDir()
+	c, err := diambra.NewConfig()
 	if err != nil {
-		level.Error(logger).Log("msg", "couldn't get homedir", "err", err.Error())
+		level.Error(logger).Log("msg", err.Error())
 		os.Exit(1)
 	}
-	hostname, err := os.Hostname()
-	if err != nil {
-		level.Error(logger).Log("msg", "couldn't get hostname", "err", err.Error())
-	}
-	c := &diambra.EnvConfig{
-		User:     userName,
-		Home:     homedir,
-		Hostname: hostname,
-	}
-
 	fi, err := os.Stdout.Stat()
 	if err != nil || (fi.Mode()&os.ModeCharDevice) != 0 {
 		c.Tty = true
@@ -90,26 +55,8 @@ The flag --agent-image can be used to run the commands in the given image.`,
 			}
 		},
 	}
-	defaultRomsPath := os.Getenv("DIAMBRAROMSPATH")
-	if defaultRomsPath == "" {
-		defaultRomsPath = filepath.Join(homedir, ".diambra", "roms")
-	}
-	cmd.Flags().IntVarP(&c.Scale, "scale", "s", 1, "Number of environments to run")
-	cmd.Flags().BoolVarP(&c.AutoRemove, "autoremove", "x", true, "Remove containers on exit")
-	cmd.Flags().BoolVarP(&c.Interactive, "interactive", "i", true, "Open stdin for interactions with arena and agent")
 
-	cmd.Flags().StringVarP(&c.RomsPath, "romsPath", "r", defaultRomsPath, "Path to ROMs (default to DIAMBRAROMSPATH env var if set)")
-	cmd.Flags().StringVarP(&c.CredPath, "credPath", "c", filepath.Join(homedir, ".diambraCred"), "Path to credentials file")
-
-	cmd.Flags().BoolVar(&c.AppArgs.Render, "render", false, "Render graphics server side")
-	cmd.Flags().BoolVar(&c.AppArgs.LockFPS, "lockfps", false, "Lock FPS")
-	cmd.Flags().BoolVar(&c.AppArgs.Sound, "sound", false, "Enable sound")
-
-	cmd.Flags().BoolVarP(&c.PullImage, "pull", "p", true, "(Always) pull image before running")
-
-	cmd.Flags().StringVarP(&c.AgentImage, "agent.image", "a", "", "Run agent in container")
-	cmd.Flags().StringVarP(&c.Image, "env.image", "e", DefaultEnvImage, "Env image to use")
-	cmd.Flags().StringVar(&c.SeccompProfile, "env.seccomp", "unconfined", "Path to seccomp profile to use for env (may slow down environment). Set to \"\" for runtime's default profile.")
+	c.AddFlags(cmd.Flags())
 
 	cmd.Flags().SetInterspersed(false)
 
@@ -119,31 +66,13 @@ The flag --agent-image can be used to run the commands in the given image.`,
 
 func RunFn(logger *log.Logger, c *diambra.EnvConfig, args []string) error {
 	level.Debug(logger).Log("config", fmt.Sprintf("%#v", c))
-	if !pathExists(c.RomsPath) {
-		return fmt.Errorf("romsPath %s does not exist. Is --romsPath set correctly?", c.RomsPath)
-	}
-	if !pathExists(c.CredPath) {
-		fh, err := os.OpenFile(c.CredPath, os.O_RDONLY|os.O_CREATE, 0600)
-		if err != nil {
-			return fmt.Errorf("can't create credentials file %s: %w", c.CredPath, err)
-		}
-		fh.Close()
-	}
 
 	//streamer := ui.NewStreamer(logger, os.Stdin, os.Stdout)
 	client, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
 	if err != nil {
 		return err
 	}
-	runner := container.NewDockerRunner(logger, client, c.AutoRemove)
-	if c.PullImage {
-		reader, err := runner.PullImage(c.Image)
-		if err != nil {
-			return fmt.Errorf("couldn't pull image %s: %w:\nTo disable pulling the image on start, retry with --pull=false", c.Image, err)
-		}
-		defer reader.Close()
-		io.Copy(os.Stderr, reader)
-	}
+	runner := container.NewDockerRunner(logger, client, c.AutoRemove, c.PullImage)
 
 	d, err := diambra.NewDiambra(logger, runner, c) //, streamer)
 	if err != nil {
