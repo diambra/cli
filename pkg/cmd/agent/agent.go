@@ -5,11 +5,12 @@ Copyright © 2022 NAME HERE <EMAIL ADDRESS>
 package agent
 
 import (
-	"github.com/go-kit/log"
+	"github.com/diambra/cli/pkg/log"
+
 	"github.com/spf13/cobra"
 )
 
-func NewCommand(logger log.Logger) *cobra.Command {
+func NewCommand(logger *log.Logger) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "agent",
 		Short: "Agent commands",
