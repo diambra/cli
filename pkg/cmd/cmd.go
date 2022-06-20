@@ -5,6 +5,8 @@ Copyright © 2022 DIAMBRA <info@diambra.ai>
 package cmd
 
 import (
+	"os"
+
 	"github.com/diambra/cli/pkg/cmd/agent"
 	"github.com/diambra/cli/pkg/cmd/arena"
 	"github.com/diambra/cli/pkg/log"
@@ -13,10 +15,13 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func NewDiambraCommand(logger *log.Logger) *cobra.Command {
+func NewDiambraCommand() *cobra.Command {
 	var (
-		debug = false
-		cmd   = &cobra.Command{
+		logger = &log.Logger{}
+
+		logFormat = ""
+		debug     = false
+		cmd       = &cobra.Command{
 			Use:   "diambra",
 			Short: "The DIAMBRA cli",
 			Long: `Quickstart:
@@ -24,14 +29,16 @@ func NewDiambraCommand(logger *log.Logger) *cobra.Command {
 - Run 'diambra run ./agent.py' to bring up DIAMBRA arena and run agent.py
 `,
 			PersistentPreRun: func(cmd *cobra.Command, args []string) {
-				if !debug {
-					logger.SetLogLevel(level.AllowInfo())
+				if err := logger.SetOptions(debug, logFormat); err != nil {
+					level.Error(logger).Log("msg", err.Error())
+					os.Exit(1)
 				}
 			},
 		}
 	)
 
-	cmd.PersistentFlags().BoolVarP(&debug, "debug", "d", false, "Enable debug logging")
+	cmd.PersistentFlags().BoolVarP(&debug, "log.debug", "d", false, "Enable debug logging")
+	cmd.PersistentFlags().StringVar(&logFormat, "log.format", "fancy", "Set logging output format (logfmt, json, fancy)")
 	cmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
 
 	cmd.AddCommand(NewCmdRun(logger))
