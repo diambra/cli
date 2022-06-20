@@ -6,15 +6,18 @@ import (
 	"io"
 	"os"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/mount"
 	"github.com/docker/docker/client"
+	"github.com/docker/docker/pkg/jsonmessage"
 	"github.com/docker/go-connections/nat"
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
+	"github.com/moby/term"
 )
 
 // DockerRunner implements Runner
@@ -23,28 +26,30 @@ type DockerRunner struct {
 	*client.Client
 	TimeoutStop time.Duration
 	AutoRemove  bool
-	PullImage   bool
 }
 
-func NewDockerRunner(logger log.Logger, client *client.Client, autoRemove, pullImage bool) *DockerRunner {
+func NewDockerRunner(logger log.Logger, client *client.Client, autoRemove bool) *DockerRunner {
 	return &DockerRunner{
 		Logger:      logger,
 		Client:      client,
 		TimeoutStop: 10 * time.Second,
 		AutoRemove:  autoRemove,
-		PullImage:   pullImage,
 	}
 }
 
-func (r *DockerRunner) Start(c *Container) (*ContainerStatus, error) {
-	if r.PullImage {
-		reader, err := r.Client.ImagePull(context.TODO(), c.Image, types.ImagePullOptions{})
-		if err != nil {
-			return nil, fmt.Errorf("couldn't pull image %s: %w:\nTo disable pulling the image on start, retry with --pull=false", c.Image, err)
-		}
-		defer reader.Close()
-		io.Copy(os.Stderr, reader)
+func (r *DockerRunner) Pull(c *Container, output *os.File) error {
+	reader, err := r.Client.ImagePull(context.TODO(), c.Image, types.ImagePullOptions{})
+	if err != nil {
+		return fmt.Errorf("couldn't pull image %s: %w:\nTo disable pulling the image on start, retry with --pull=false", c.Image, err)
 	}
+	defer reader.Close()
+
+	termFd, isTerm := term.GetFdInfo(output)
+	jsonmessage.DisplayJSONMessagesStream(reader, io.Writer(output), termFd, isTerm, nil)
+	return nil
+}
+
+func (r *DockerRunner) Start(c *Container) (*ContainerStatus, error) {
 	var (
 		ctx    = context.Background()
 		config = &container.Config{
@@ -108,7 +113,7 @@ type logWriter struct {
 }
 
 func (l *logWriter) Write(p []byte) (n int, err error) {
-	level.Info(l).Log("msg", string(p))
+	level.Info(l).Log("msg", strings.TrimSuffix(string(p), "\n"))
 	return len(p), nil
 }
 

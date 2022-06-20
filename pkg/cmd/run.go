@@ -46,11 +46,11 @@ The flag --agent-image can be used to run the commands in the given image.`,
 				if exitErr, ok := err.(*exec.ExitError); ok {
 					code := exitErr.ExitCode()
 					if code != 0 {
-						level.Error(logger).Log("msg", "command failed", "err", err.Error())
+						level.Error(logger).Log("msg", "Couldn't run", "err", err.Error())
 					}
 					os.Exit(code)
 				}
-				level.Error(logger).Log("msg", "command failed", "err", err.Error())
+				level.Error(logger).Log("msg", "Couldn't run", "err", err.Error())
 				os.Exit(1)
 			}
 		},
@@ -72,7 +72,7 @@ func RunFn(logger *log.Logger, c *diambra.EnvConfig, args []string) error {
 	if err != nil {
 		return err
 	}
-	runner := container.NewDockerRunner(logger, client, c.AutoRemove, c.PullImage)
+	runner := container.NewDockerRunner(logger, client, c.AutoRemove)
 
 	d, err := diambra.NewDiambra(logger, runner, c) //, streamer)
 	if err != nil {
@@ -84,22 +84,23 @@ func RunFn(logger *log.Logger, c *diambra.EnvConfig, args []string) error {
 	go func() {
 		s := <-signalCh
 		level.Info(logger).Log("msg", "Received signal, terminating", "signal", s)
+		// FIXME: Restore terminal
 		if err := d.Cleanup(); err != nil {
 			level.Error(logger).Log("msg", "cleanup failed", "err", err.Error())
 		}
 		os.Exit(1)
 	}()
 
-	level.Debug(logger).Log("msg", "starting DIAMBRA env")
+	level.Info(logger).Log("msg", "Starting DIAMBRA environment:")
 	if err := d.Start(); err != nil {
-		return fmt.Errorf("could't start DIAMBRA Env: %w", err)
+		return err
 	}
 
 	envs, err := d.EnvsString()
 	if err != nil {
 		return err
 	}
-	level.Debug(logger).Log("msg", "DIAMBRA env started")
+	level.Info(logger).Log("msg", "DIAMBRA environment started")
 
 	if c.AgentImage != "" {
 		return d.RunAgentImage(c.AgentImage, args)

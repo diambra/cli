@@ -60,6 +60,7 @@ type EnvConfig struct {
 
 	User           string
 	SeccompProfile string
+	Output         *os.File
 	Tty            bool // stdin is a terminal
 	Interactive    bool // interaction requested
 
@@ -90,6 +91,7 @@ func NewConfig() (*EnvConfig, error) {
 		User:     userName,
 		Home:     homedir,
 		Hostname: hostname,
+		Output:   os.Stderr,
 	}, nil
 }
 
@@ -119,10 +121,18 @@ func (c *EnvConfig) AddFlags(flags *pflag.FlagSet) {
 }
 
 func (c *EnvConfig) Validate() error {
-	if !pathExists(c.RomsPath) {
+	exists, isDir := pathExistsAndIsDir(c.RomsPath)
+	if !exists {
 		return fmt.Errorf("romsPath %s does not exist. Is --romsPath set correctly?", c.RomsPath)
 	}
-	if !pathExists(c.CredPath) {
+	if !isDir {
+		return fmt.Errorf("romsPath %s is not a directory. Is --romsPath set correctly?", c.RomsPath)
+	}
+	exists, isDir = pathExistsAndIsDir(c.CredPath)
+	if exists && isDir {
+		return fmt.Errorf("credPath %s is a directory. Is --credPath set correctly?", c.CredPath)
+	}
+	if !exists {
 		fh, err := os.OpenFile(c.CredPath, os.O_RDONLY|os.O_CREATE, 0600)
 		if err != nil {
 			return fmt.Errorf("can't create credentials file %s: %w", c.CredPath, err)
@@ -140,12 +150,13 @@ func (c *EnvConfig) Validate() error {
 	return nil
 }
 
-func pathExists(path string) bool {
-	if _, err := os.Stat(path); err != nil {
+func pathExistsAndIsDir(path string) (bool, bool) {
+	fi, err := os.Stat(path)
+	if err != nil {
 		if os.IsNotExist(err) {
-			return false
+			return false, false
 		}
 		panic(err)
 	}
-	return true
+	return true, fi.IsDir()
 }
