@@ -169,6 +169,9 @@ func (d *Diambra) start(envId int, first bool) error {
 }
 
 func (d *Diambra) Start() error {
+	if err := d.config.Validate(); err != nil {
+		return err
+	}
 	first := true
 	for i := 0; i < d.config.Scale; i++ {
 		if err := d.start(i, first); err != nil {
