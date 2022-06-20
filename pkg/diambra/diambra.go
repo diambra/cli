@@ -98,15 +98,25 @@ func (d *Diambra) RandInt() (int, error) {
 }
 
 func (d *Diambra) start(envId int, first bool) error {
-	agentLogger := d.Logger //e.Screen.NewTab())
+	agentLogger := log.With(d.Logger, "source", "agent")
+
 	level.Debug(d.Logger).Log("msg", "creating env container", "envID", envId)
 	randomSeed, err := d.RandInt()
 	if err != nil {
 		return fmt.Errorf("couldn't generate random seed: %w", err)
 	}
-	cs, err := d.Runner.Start(newEnvContainer(d.config, envId, randomSeed))
+
+	ec := newEnvContainer(d.config, envId, randomSeed)
+
+	if first && d.config.PullImage {
+		if err := d.Runner.Pull(ec, d.config.Output); err != nil {
+			return err
+		}
+	}
+
+	cs, err := d.Runner.Start(ec)
 	if err != nil {
-		return fmt.Errorf("couldn't start env container: %w", err)
+		return err
 	}
 	level.Debug(d.Logger).Log("msg", "started env container", "id", cs.ID)
 	env := &Env{
@@ -147,14 +157,6 @@ func (d *Diambra) start(envId int, first bool) error {
 		rc.Close()
 		term.Reset()
 
-		// FIXME: We should just call Render() automatically from the Writer
-		/*
-			go func() {
-				ticker := time.NewTicker(500 * time.Millisecond) // ~30 fps
-				for range ticker.C {
-					e.Screen.Render()
-				}
-			}()*/
 	}
 	go func(id string) {
 		level.Debug(d.Logger).Log("msg", "in go func")
@@ -268,7 +270,6 @@ func (e *Diambra) RunAgentImage(image string, args []string) error {
 		return fmt.Errorf("couldn't wait for container to finish: %w", err)
 	}
 	wc.Close()
-	//rc.Close()
 	level.Debug(e.Logger).Log("msg", "waiting for stdout to close")
 	<-doneCh
 

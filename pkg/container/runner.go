@@ -3,6 +3,7 @@ package container
 import (
 	"fmt"
 	"io"
+	"os"
 	"strconv"
 	"strings"
 
@@ -87,6 +88,7 @@ type ContainerStatus struct {
 }
 
 type Runner interface {
+	Pull(*Container, *os.File) error
 	Start(*Container) (*ContainerStatus, error)
 	LogLogs(id string, logger log.Logger) error
 	Stop(id string) error
