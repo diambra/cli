@@ -200,6 +200,7 @@ func newEnvContainer(config *EnvConfig, envID, randomSeed int) *container.Contai
 			container.NewBindMount(config.RomsPath, "/opt/diambraArena/roms"),
 		},
 	}
+	c.BindMounts = append(c.BindMounts, config.Mounts...)
 
 	if config.AppArgs.Render {
 		xauthority := filepath.Join(config.Home, ".Xauthority")

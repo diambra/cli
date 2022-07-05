@@ -7,7 +7,9 @@ import (
 	"path/filepath"
 	"runtime"
 	"strconv"
+	"strings"
 
+	"github.com/diambra/cli/pkg/container"
 	"github.com/spf13/pflag"
 )
 
@@ -63,6 +65,8 @@ type EnvConfig struct {
 
 	Home     string
 	Hostname string
+	Mounts   []*container.BindMount
+	mounts   []string
 }
 
 func NewConfig() (*EnvConfig, error) {
@@ -111,6 +115,7 @@ func (c *EnvConfig) AddFlags(flags *pflag.FlagSet) {
 	flags.StringVarP(&c.AgentImage, "agent.image", "a", "", "Run agent in container")
 	flags.StringVarP(&c.Image, "env.image", "e", DefaultEnvImage, "Env image to use")
 	flags.StringVar(&c.SeccompProfile, "env.seccomp", "unconfined", "Path to seccomp profile to use for env (may slow down environment). Set to \"\" for runtime's default profile.")
+	flags.StringSliceVar(&c.mounts, "env.mount", []string{}, "Host mounts for env container (/host/path:/container/path)")
 }
 
 func (c *EnvConfig) Validate() error {
@@ -123,6 +128,14 @@ func (c *EnvConfig) Validate() error {
 			return fmt.Errorf("can't create credentials file %s: %w", c.CredPath, err)
 		}
 		fh.Close()
+	}
+	c.Mounts = make([]*container.BindMount, len(c.mounts))
+	for i, m := range c.mounts {
+		p := strings.SplitN(m, ":", 2)
+		if len(p) != 2 {
+			return fmt.Errorf("invalid mount option %s", m)
+		}
+		c.Mounts[i] = container.NewBindMount(p[0], p[1])
 	}
 	return nil
 }
