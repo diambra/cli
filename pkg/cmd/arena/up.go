@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/exec"
 
+	"github.com/containerd/console"
 	"github.com/diambra/cli/pkg/container"
 	"github.com/diambra/cli/pkg/diambra"
 	"github.com/diambra/cli/pkg/log"
@@ -64,7 +65,7 @@ func RunFn(logger *log.Logger, c *diambra.EnvConfig, args []string) error {
 	}
 	runner := container.NewDockerRunner(logger, client, c.AutoRemove)
 
-	d, err := diambra.NewDiambra(logger, runner, c)
+	d, err := diambra.NewDiambra(logger, console.Current(), runner, c)
 	if err != nil {
 		return fmt.Errorf("couldn't create DIAMBRA Env: %w", err)
 	}

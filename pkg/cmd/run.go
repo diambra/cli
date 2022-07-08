@@ -11,6 +11,7 @@ import (
 	"os/signal"
 	"syscall"
 
+	"github.com/containerd/console"
 	"github.com/diambra/cli/pkg/container"
 	"github.com/diambra/cli/pkg/diambra"
 	"github.com/diambra/cli/pkg/log"
@@ -73,8 +74,8 @@ func RunFn(logger *log.Logger, c *diambra.EnvConfig, args []string) error {
 		return err
 	}
 	runner := container.NewDockerRunner(logger, client, c.AutoRemove)
-
-	d, err := diambra.NewDiambra(logger, runner, c) //, streamer)
+	console := console.Current()
+	d, err := diambra.NewDiambra(logger, console, runner, c) //, streamer)
 	if err != nil {
 		return fmt.Errorf("couldn't create DIAMBRA Env: %w", err)
 	}
@@ -84,6 +85,7 @@ func RunFn(logger *log.Logger, c *diambra.EnvConfig, args []string) error {
 	go func() {
 		s := <-signalCh
 		level.Info(logger).Log("msg", "Received signal, terminating", "signal", s)
+		console.Reset()
 		// FIXME: Restore terminal
 		if err := d.Cleanup(); err != nil {
 			level.Error(logger).Log("msg", "cleanup failed", "err", err.Error())

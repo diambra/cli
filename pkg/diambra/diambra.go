@@ -31,6 +31,7 @@ type Env struct {
 
 type Diambra struct {
 	log.Logger
+	console console.Console
 	container.Runner
 	Envs   []*Env
 	config *EnvConfig
@@ -39,12 +40,13 @@ type Diambra struct {
 
 // func NewDiambra(logger log.Logger, config *EnvConfig, streamer *ui.Streamer) (*Diambra, error) {
 
-func NewDiambra(logger log.Logger, runner container.Runner, config *EnvConfig) (*Diambra, error) {
+func NewDiambra(logger log.Logger, console console.Console, runner container.Runner, config *EnvConfig) (*Diambra, error) {
 	return &Diambra{
-		Logger: logger,
-		Runner: runner,
-		Envs:   []*Env{},
-		config: config,
+		Logger:  logger,
+		console: console,
+		Runner:  runner,
+		Envs:    []*Env{},
+		config:  config,
 	}, nil
 }
 
@@ -133,15 +135,14 @@ func (d *Diambra) start(envId int, first bool) error {
 			return err
 		}
 
-		term := console.Current()
-		if err := term.SetRaw(); err != nil {
+		if err := d.console.SetRaw(); err != nil {
 			return err
 		}
-		ws, err := term.Size()
+		ws, err := d.console.Size()
 		if err != nil {
 			return err
 		}
-		term.Resize(ws)
+		d.console.Resize(ws)
 
 		go func() {
 			io.Copy(wc, os.Stdin)
@@ -155,7 +156,7 @@ func (d *Diambra) start(envId int, first bool) error {
 		level.Debug(d.Logger).Log("msg", "closing streamer")
 		wc.Close()
 		rc.Close()
-		term.Reset()
+		d.console.Reset()
 
 	}
 	go func(id string) {
