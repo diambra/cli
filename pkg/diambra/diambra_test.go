@@ -6,7 +6,6 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/containerd/console"
 	"github.com/diambra/cli/pkg/container"
 	"github.com/go-kit/log"
 	"github.com/stretchr/testify/assert"
@@ -62,6 +61,6 @@ func TestDiambra(t *testing.T) {
 			Interactive:    false,
 		}
 	)
-	_, err := NewDiambra(logger, console.Current(), runner, config)
+	_, err := NewDiambra(logger, nil, runner, config)
 	assert.NoError(err)
 }
