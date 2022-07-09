@@ -3,13 +3,14 @@ module github.com/diambra/cli
 go 1.18
 
 require (
-	github.com/docker/docker v20.10.16+incompatible
+	github.com/docker/docker v20.10.17+incompatible
 	github.com/go-kit/log v0.2.1
 	github.com/spf13/cobra v1.4.0
 	github.com/stretchr/testify v1.7.0
 )
 
 require (
+	github.com/Azure/go-ansiterm v0.0.0-20210617225240-d185dfc1b5a1 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/golang/protobuf v1.5.2 // indirect
 	github.com/mattn/go-colorable v0.1.9 // indirect
