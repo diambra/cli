@@ -10,6 +10,7 @@ import (
 	"github.com/diambra/cli/pkg/cmd/agent"
 	"github.com/diambra/cli/pkg/cmd/arena"
 	"github.com/diambra/cli/pkg/log"
+	"github.com/diambra/cli/pkg/version"
 	"github.com/go-kit/log/level"
 
 	"github.com/spf13/cobra"
@@ -34,12 +35,12 @@ func NewDiambraCommand() *cobra.Command {
 					os.Exit(1)
 				}
 			},
+			Version: version.String(),
 		}
 	)
 
 	cmd.PersistentFlags().BoolVarP(&debug, "log.debug", "d", false, "Enable debug logging")
 	cmd.PersistentFlags().StringVar(&logFormat, "log.format", "fancy", "Set logging output format (logfmt, json, fancy)")
-	cmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
 
 	cmd.AddCommand(NewCmdRun(logger))
 	cmd.AddCommand(agent.NewCommand(logger))
