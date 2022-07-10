@@ -1,7 +1,18 @@
 /*
-Copyright © 2022 NAME HERE <EMAIL ADDRESS>
+ * Copyright 2022 The DIAMBRA Authors
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
-*/
 package cmd
 
 import (
@@ -38,6 +49,7 @@ func NewCmdRun(logger *log.Logger) *cobra.Command {
 		Long: `Run runs the given command after diambraEngine is brought up.
 		
 It will set the DIAMBRA_ENVS environment variable to list the endpoints of all running environments.
+The DIAMBRA arena python package will automatically be configured by this.
 
 The flag --agent-image can be used to run the commands in the given image.`,
 		Args: cobra.MinimumNArgs(1),
@@ -61,21 +73,19 @@ The flag --agent-image can be used to run the commands in the given image.`,
 
 	cmd.Flags().SetInterspersed(false)
 
-	// cmd.LocalFlags().MarkFlagsMutuallyExclusive() Update cobra for this
 	return cmd
 }
 
 func RunFn(logger *log.Logger, c *diambra.EnvConfig, args []string) error {
 	level.Debug(logger).Log("config", fmt.Sprintf("%#v", c))
 
-	//streamer := ui.NewStreamer(logger, os.Stdin, os.Stdout)
 	client, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
 	if err != nil {
 		return err
 	}
 	runner := container.NewDockerRunner(logger, client, c.AutoRemove)
 	console := console.Current()
-	d, err := diambra.NewDiambra(logger, console, runner, c) //, streamer)
+	d, err := diambra.NewDiambra(logger, console, runner, c)
 	if err != nil {
 		return fmt.Errorf("couldn't create DIAMBRA Env: %w", err)
 	}
@@ -86,7 +96,6 @@ func RunFn(logger *log.Logger, c *diambra.EnvConfig, args []string) error {
 		s := <-signalCh
 		level.Info(logger).Log("msg", "Received signal, terminating", "signal", s)
 		console.Reset()
-		// FIXME: Restore terminal
 		if err := d.Cleanup(); err != nil {
 			level.Error(logger).Log("msg", "cleanup failed", "err", err.Error())
 		}
