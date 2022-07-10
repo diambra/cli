@@ -12,5 +12,10 @@ jobs:
     - uses: actions/setup-go@v3
       with:
         go-version: 1.18
+    - run: ./build-release-binaries
+    - uses: actions/upload-artifact@v3
+      with:
+        name: binaries
+        path: bin/
     - run: go test -v ./...
     - uses: golangci/golangci-lint-action@v3
