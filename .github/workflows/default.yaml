@@ -24,8 +24,7 @@ jobs:
     - run: ./build-release-binaries
     - uses: actions/upload-artifact@v3
       with:
-        name: binaries
-        path: bin/
+        path: bin/*
     - run: go test -v ./...
     - uses: softprops/action-gh-release@v1
       if: startsWith(github.ref, 'refs/tags/')
