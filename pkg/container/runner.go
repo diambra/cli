@@ -42,7 +42,7 @@ type Port string
 func (p Port) split() (port int, proto string, err error) {
 	var (
 		parts   = strings.SplitN(string(p), "/", 2)
-		portStr = ""
+		portStr string
 	)
 	proto = "tcp"
 

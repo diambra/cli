@@ -157,21 +157,31 @@ func (d *Diambra) start(envId int, first bool) error {
 		if err != nil {
 			return err
 		}
-		d.console.Resize(ws)
+		if err := d.console.Resize(ws); err != nil {
+			return fmt.Errorf("couldn't resize console: %w", err)
+		}
 
 		go func() {
-			io.Copy(wc, os.Stdin)
+			if _, err := io.Copy(wc, os.Stdin); err != nil {
+				level.Error(d.Logger).Log("msg", "error copying stdin to container stdin", "err", err.Error())
+			}
 		}()
 		go func() {
-			io.Copy(os.Stdout, rc)
+			if _, err := io.Copy(os.Stdout, rc); err != nil {
+				level.Error(d.Logger).Log("msg", "error copying container stdout to stdout", "err", err.Error())
+			}
 		}()
 
 		level.Debug(d.Logger).Log("msg", "waiting for grpc")
-		d.waitForGRPC(env.Address)
+		if err := d.waitForGRPC(env.Address); err != nil {
+			return fmt.Errorf("error waiting for grpc: %w", err)
+		}
 		level.Debug(d.Logger).Log("msg", "closing streamer")
 		wc.Close()
 		rc.Close()
-		d.console.Reset()
+		if err := d.console.Reset(); err != nil {
+			level.Error(d.Logger).Log("msg", "error resetting console", "err", err.Error())
+		}
 
 	}
 	go func(id string) {
@@ -272,11 +282,15 @@ func (e *Diambra) RunAgentImage(image string, args []string) error {
 	}
 
 	go func() {
-		io.Copy(wc, os.Stdin)
+		if _, err := io.Copy(wc, os.Stdin); err != nil {
+			level.Error(e.Logger).Log("msg", "error copying stdin to container stdin", "err", err.Error())
+		}
 	}()
 	doneCh := make(chan struct{})
 	go func() {
-		io.Copy(os.Stdout, rc)
+		if _, err := io.Copy(os.Stdout, rc); err != nil {
+			level.Error(e.Logger).Log("msg", "error copying container stdout to stdout", "err", err.Error())
+		}
 		doneCh <- struct{}{}
 	}()
 

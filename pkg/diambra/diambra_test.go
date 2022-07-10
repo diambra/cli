@@ -28,7 +28,6 @@ import (
 
 // Implements Runner
 type mockRunner struct {
-	envs map[string]*container.Container
 }
 
 func (r *mockRunner) Start(c *container.Container) (*container.ContainerStatus, error) {

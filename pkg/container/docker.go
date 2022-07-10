@@ -60,8 +60,7 @@ func (r *DockerRunner) Pull(c *Container, output *os.File) error {
 	defer reader.Close()
 
 	termFd, isTerm := term.GetFdInfo(output)
-	jsonmessage.DisplayJSONMessagesStream(reader, io.Writer(output), termFd, isTerm, nil)
-	return nil
+	return jsonmessage.DisplayJSONMessagesStream(reader, io.Writer(output), termFd, isTerm, nil)
 }
 
 func (r *DockerRunner) Start(c *Container) (*ContainerStatus, error) {
