@@ -89,13 +89,19 @@ func RunFn(logger *log.Logger, c *diambra.EnvConfig, args []string) error {
 	if err != nil {
 		return fmt.Errorf("couldn't create DIAMBRA Env: %w", err)
 	}
-	defer d.Cleanup()
+	defer func() {
+		if err := d.Cleanup(); err != nil {
+			level.Error(logger).Log("msg", "Couldn't cleanup DIAMBRA Env", "err", err.Error())
+		}
+	}()
 	signalCh := make(chan os.Signal, 1)
 	signal.Notify(signalCh, os.Interrupt, syscall.SIGTERM)
 	go func() {
 		s := <-signalCh
 		level.Info(logger).Log("msg", "Received signal, terminating", "signal", s)
-		console.Reset()
+		if err := console.Reset(); err != nil {
+			level.Error(logger).Log("msg", "Couldn't reset console", "err", err.Error())
+		}
 		if err := d.Cleanup(); err != nil {
 			level.Error(logger).Log("msg", "cleanup failed", "err", err.Error())
 		}
