@@ -1,0 +1,16 @@
+Metadata-Version: 2.1
+Name: diambra
+Version: $VERSION
+Summary: DIAMBRA cli
+Description-Content-Type: text/markdown
+License: Apache-2.0
+Classifier: Development Status :: 3 - Alpha
+Classifier: Operating System :: OS Independent
+Classifier: Programming Language :: Python
+Classifier: Programming Language :: Python :: 3
+Classifier: Topic :: Scientific/Engineering :: Artificial Intelligence
+Classifier: Topic :: Scientific/Engineering :: Artificial Life
+Classifier: Topic :: Games/Entertainment
+Classifier: Topic :: Games/Entertainment :: Arcade
+Classifier: Topic :: Education
+

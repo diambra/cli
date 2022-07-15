@@ -1,5 +1,4 @@
-# cli
-# diambra-cli
+# diambra CLI
 ## Quickstart
 - Run 'diambra agent init' to create a example agent.
 - Run 'diambra run ./agent.py' to bring up DIAMBRA arena and run agent.py
