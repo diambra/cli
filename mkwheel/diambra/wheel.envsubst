@@ -1,0 +1,4 @@
+Wheel-Version: 1.0
+Generator: mkwheel.sh
+Root-Is-Purelib: false
+Tag: $TAG
