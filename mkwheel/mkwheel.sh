@@ -39,6 +39,10 @@ sys.exit(subprocess.call([
 ]))
 EOF
     cp "$binary" "$name/$name"
+    cat <<EOF > "$dist_info/entry_points.txt"
+[console_scripts]
+$name = $name:__main__
+EOF
     find "$name" -type f | while read -r f; do
         sha=$(openssl dgst -sha256 -binary <<< "$f" | openssl base64 -A)
         size=$(stat -c '%s' "$f")
