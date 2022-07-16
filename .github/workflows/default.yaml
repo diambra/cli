@@ -46,3 +46,20 @@ jobs:
       if: startsWith(github.ref, 'refs/tags/')
       with:
         files: bin/diambra-${{ matrix.os }}-${{ matrix.arch }}
+    - name: create pip wheel and upload it
+      run: |
+        rm -rf dist
+        mkdir dist
+        ./mkwheel/mkwheel diambra "${GITHUB_REF/refs\/tags\/v/}" dist/ README.md $${{ matrix.os }}_${{ matrix.arch }} ./bin/diambra-${{ matrix.os }}-${{ matrix.arch }}
+      if: startsWith(github.ref, 'refs/tags/')
+      env:
+        linux_amd64: manylinux2014_x86_64
+        linux_arm64: manylinux2014_armv7l
+        windows_amd64: windows-amd64
+        darwin_amd64: macosx_10_9_x86_64
+        darwin_arm64: macosx_11_0_arm64
+    - uses: pypa/gh-action-pypi-publish@release/v1
+      with:
+        user: __token__
+        password: ${{ secrets.TWINE_PASSWORD }}
+      if: startsWith(github.ref, 'refs/tags/')
