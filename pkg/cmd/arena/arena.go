@@ -27,7 +27,7 @@ func NewCommand(logger *log.Logger) *cobra.Command {
 		Long:  `These are the arena related commands`,
 	}
 	cmd.AddCommand(NewUpCmd(logger))
-	cmd.AddCommand(DownCmd)
+	cmd.AddCommand(NewDownCmd(logger))
 	cmd.AddCommand(StatusCmd)
 	return cmd
 }

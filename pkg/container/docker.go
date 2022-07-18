@@ -26,6 +26,7 @@ import (
 
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
+	"github.com/docker/docker/api/types/filters"
 	"github.com/docker/docker/api/types/mount"
 	"github.com/docker/docker/client"
 	"github.com/docker/docker/pkg/jsonmessage"
@@ -67,13 +68,16 @@ func (r *DockerRunner) Start(c *Container) (*ContainerStatus, error) {
 	var (
 		ctx    = context.Background()
 		config = &container.Config{
-			Image:      c.Image,
-			Hostname:   c.Hostname,
-			Cmd:        c.Args,
-			Env:        c.Env,
-			User:       c.User,
-			Tty:        true,
-			OpenStdin:  true,
+			Image:     c.Image,
+			Hostname:  c.Hostname,
+			Cmd:       c.Args,
+			Env:       c.Env,
+			User:      c.User,
+			Tty:       true,
+			OpenStdin: true,
+			Labels: map[string]string{
+				"diambra": "env",
+			},
 			StopSignal: "SIGKILL", // FIXME: Make diambraApp handle SIGTERM insteads
 		}
 		hostConfig = &container.HostConfig{
@@ -195,6 +199,38 @@ func (r *DockerRunner) Wait(id string) error {
 			return err
 		}
 	case <-statusCh:
+	}
+	return nil
+}
+
+func (r *DockerRunner) StopAll() error {
+	filters := filters.NewArgs()
+	filters.Add("label", "diambra=env")
+	ctx := context.TODO()
+	containers, err := r.Client.ContainerList(ctx, types.ContainerListOptions{Filters: filters})
+	if err != nil {
+		return err
+	}
+	if len(containers) == 0 {
+		level.Info(r.Logger).Log("msg", "no containers to stop")
+		os.Exit(0)
+	}
+	for _, c := range containers {
+		level.Info(r.Logger).Log("msg", "stopping container", "id", c.ID)
+		if err := r.Stop(c.ID); err != nil {
+			return err
+		}
+
+		ci, err := r.Client.ContainerInspect(ctx, c.ID)
+		if err != nil {
+			return err
+		}
+		if ci.HostConfig.AutoRemove {
+			continue
+		}
+		if err := r.Client.ContainerRemove(ctx, c.ID, types.ContainerRemoveOptions{RemoveVolumes: true, Force: true}); err != nil {
+			return err
+		}
 	}
 	return nil
 }
