@@ -161,13 +161,20 @@ func (d *Diambra) start(envId int, first bool) error {
 			return fmt.Errorf("couldn't resize console: %w", err)
 		}
 
+		done := false
 		go func() {
 			if _, err := io.Copy(wc, os.Stdin); err != nil {
+				if done {
+					return
+				}
 				level.Error(d.Logger).Log("msg", "error copying stdin to container stdin", "err", err.Error())
 			}
 		}()
 		go func() {
 			if _, err := io.Copy(os.Stdout, rc); err != nil {
+				if done {
+					return
+				}
 				level.Error(d.Logger).Log("msg", "error copying container stdout to stdout", "err", err.Error())
 			}
 		}()
@@ -177,6 +184,7 @@ func (d *Diambra) start(envId int, first bool) error {
 			return fmt.Errorf("error waiting for grpc: %w", err)
 		}
 		level.Debug(d.Logger).Log("msg", "closing streamer")
+		done = true
 		wc.Close()
 		rc.Close()
 		if err := d.console.Reset(); err != nil {
