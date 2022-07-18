@@ -107,6 +107,7 @@ type Runner interface {
 	Start(*Container) (*ContainerStatus, error)
 	LogLogs(id string, logger log.Logger) error
 	Stop(id string) error
+	StopAll() error
 	Attach(id string) (io.WriteCloser, io.ReadCloser, error)
 	Wait(id string) error
 }

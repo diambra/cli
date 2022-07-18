@@ -16,16 +16,32 @@
 package arena
 
 import (
-	"fmt"
+	"os"
 
+	"github.com/diambra/cli/pkg/container"
+	"github.com/diambra/cli/pkg/log"
+	"github.com/docker/docker/client"
+	"github.com/go-kit/log/level"
 	"github.com/spf13/cobra"
 )
 
-var DownCmd = &cobra.Command{
-	Use:   "down",
-	Short: "Stop DIAMBRA Arena",
-	Long:  `This stops a DIAMBRA Arena running in the background.`,
-	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("down called")
-	},
+func NewDownCmd(logger *log.Logger) *cobra.Command {
+	return &cobra.Command{
+		Use:   "down",
+		Short: "Stop DIAMBRA Arena",
+		Long:  `This stops a DIAMBRA Arena running in the background.`,
+		Run: func(_ *cobra.Command, _ []string) {
+
+			client, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
+			if err != nil {
+				level.Error(logger).Log("msg", "failed to create docker client", "err", err.Error())
+				os.Exit(1)
+			}
+			runner := container.NewDockerRunner(logger, client, true)
+			if err := runner.StopAll(); err != nil {
+				level.Error(logger).Log("msg", "failed to stop all containers", "err", err.Error())
+				os.Exit(1)
+			}
+		},
+	}
 }

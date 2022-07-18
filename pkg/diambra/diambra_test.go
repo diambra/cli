@@ -54,6 +54,10 @@ func (r *mockRunner) Pull(c *container.Container, output *os.File) error {
 	panic("not implemented") // TODO: Implement
 }
 
+func (r *mockRunner) StopAll() error {
+	panic("not implemented") // TODO: Implement
+}
+
 func TestDiambra(t *testing.T) {
 	var (
 		logger = log.NewLogfmtLogger(os.Stderr)
