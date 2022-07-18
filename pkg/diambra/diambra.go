@@ -115,7 +115,7 @@ func (d *Diambra) RandInt() (int, error) {
 }
 
 func (d *Diambra) start(envId int, first bool) error {
-	agentLogger := log.With(d.Logger, "source", "agent")
+	envLogger := log.With(d.Logger, "source", "env")
 
 	level.Debug(d.Logger).Log("msg", "creating env container", "envID", envId)
 	randomSeed, err := d.RandInt()
@@ -186,7 +186,7 @@ func (d *Diambra) start(envId int, first bool) error {
 	}
 	go func(id string) {
 		level.Debug(d.Logger).Log("msg", "in go func")
-		if err := d.Runner.LogLogs(id, log.With(agentLogger, "id", id)); err != nil {
+		if err := d.Runner.LogLogs(id, log.With(envLogger, "id", id)); err != nil {
 			level.Warn(d.Logger).Log("msg", "LogLogs failed", "err", err.Error())
 		}
 		level.Debug(d.Logger).Log("msg", "end of go func")
@@ -224,7 +224,7 @@ func newEnvContainer(config *EnvConfig, envID, randomSeed int) *container.Contai
 		Args:        args.Args(),
 		PortMapping: pm,
 		BindMounts: []*container.BindMount{
-			container.NewBindMount(config.CredPath, "/tmp/.diambraCred"),
+			container.NewBindMount(config.CredPath, "/tmp/.diambra/credentials"),
 			container.NewBindMount(config.RomsPath, "/opt/diambraArena/roms"),
 		},
 	}
