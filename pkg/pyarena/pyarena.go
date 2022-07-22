@@ -13,32 +13,14 @@
  * limitations under the License.
  */
 
-package arena
+package pyarena
 
 import (
-	"os"
-
-	"github.com/diambra/cli/pkg/log"
-	"github.com/go-kit/log/level"
-	"github.com/spf13/cobra"
+	_ "embed"
 )
 
-func NewCommand(logger *log.Logger) *cobra.Command {
-	cmd := &cobra.Command{
-		Use:   "arena",
-		Short: "Arena commands",
-		Long:  `These are the arena related commands`,
-	}
-	cmd.AddCommand(NewUpCmd(logger))
-	cmd.AddCommand(NewDownCmd(logger))
-	cmd.AddCommand(StatusCmd)
-	romCmds, err := NewRomCmds(logger)
-	if err != nil {
-		level.Error(logger).Log("msg", "failed to create rom commands", "err", err.Error())
-		os.Exit(1)
-	}
-	for _, c := range romCmds {
-		cmd.AddCommand(c)
-	}
-	return cmd
-}
+//go:embed check_roms.py
+var CheckRoms string
+
+//go:embed list_roms.py
+var ListRoms string

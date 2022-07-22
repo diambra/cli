@@ -27,6 +27,10 @@ type Logger struct {
 	log.Logger
 }
 
+func New() *Logger {
+	return &Logger{Logger: log.NewLogfmtLogger(os.Stderr)}
+}
+
 func (l *Logger) SetOptions(debug bool, logFormat string) error {
 	switch logFormat {
 	case "logfmt":
