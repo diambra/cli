@@ -1,4 +1,4 @@
 #!/usr/bin/env python
 
-import diambraArena
-diambraArena.availableGames(True, True)
+import diambra.arena
+diambra.arena.available_games(True, True)
