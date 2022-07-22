@@ -110,15 +110,19 @@ func NewConfig() (*EnvConfig, error) {
 	}, nil
 }
 
-func (c *EnvConfig) AddFlags(flags *pflag.FlagSet) {
+func (c *EnvConfig) AddRomsPathFlag(flags *pflag.FlagSet) {
 	defaultRomsPath := os.Getenv("DIAMBRAROMSPATH")
 	if defaultRomsPath == "" {
 		defaultRomsPath = filepath.Join(c.Home, ".diambra", "roms")
 	}
+	flags.StringVarP(&c.RomsPath, "path.roms", "r", defaultRomsPath, "Path to ROMs (default to DIAMBRAROMSPATH env var if set)")
+}
+
+func (c *EnvConfig) AddFlags(flags *pflag.FlagSet) {
 
 	// Path configuration
-	flags.StringVarP(&c.RomsPath, "path.roms", "r", defaultRomsPath, "Path to ROMs (default to DIAMBRAROMSPATH env var if set)")
 	flags.StringVar(&c.CredPath, "path.credentials", filepath.Join(c.Home, ".diambra/credentials"), "Path to credentials file")
+	c.AddRomsPathFlag(flags)
 
 	// Flags that apply to both agent and env
 	flags.BoolVarP(&c.Interactive, "interactive", "i", true, "Open stdin for interactions with arena and agent")

@@ -29,7 +29,7 @@ import (
 
 func NewDiambraCommand() *cobra.Command {
 	var (
-		logger = &log.Logger{}
+		logger = log.New()
 
 		logFormat = ""
 		debug     = false
