@@ -158,6 +158,10 @@ func (c *EnvConfig) Validate() error {
 		return fmt.Errorf("path.credentials %s is a directory. Is --path.credentials set correctly?", c.CredPath)
 	}
 	if !exists {
+		bp := filepath.Dir(c.CredPath)
+		if err := os.MkdirAll(bp, 0755); err != nil {
+			return fmt.Errorf("can't create %s: %w", bp, err)
+		}
 		fh, err := os.OpenFile(c.CredPath, os.O_RDONLY|os.O_CREATE, 0600)
 		if err != nil {
 			return fmt.Errorf("can't create credentials file %s: %w", c.CredPath, err)
