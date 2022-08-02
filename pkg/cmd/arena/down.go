@@ -37,7 +37,11 @@ func NewDownCmd(logger *log.Logger) *cobra.Command {
 				level.Error(logger).Log("msg", "failed to create docker client", "err", err.Error())
 				os.Exit(1)
 			}
-			runner := container.NewDockerRunner(logger, client, true)
+			runner, err := container.NewDockerRunner(logger, client, true)
+			if err != nil {
+				level.Error(logger).Log("msg", "msg", "failed to create runner", "err", err.Error())
+				os.Exit(1)
+			}
 			if err := runner.StopAll(); err != nil {
 				level.Error(logger).Log("msg", "failed to stop all containers", "err", err.Error())
 				os.Exit(1)

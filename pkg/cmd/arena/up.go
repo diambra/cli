@@ -74,8 +74,10 @@ func RunFn(logger *log.Logger, c *diambra.EnvConfig, args []string) error {
 	if err != nil {
 		return err
 	}
-	runner := container.NewDockerRunner(logger, client, c.AutoRemove)
-
+	runner, err := container.NewDockerRunner(logger, client, c.AutoRemove)
+	if err != nil {
+		return err
+	}
 	d, err := diambra.NewDiambra(logger, console.Current(), runner, c)
 	if err != nil {
 		return fmt.Errorf("couldn't create DIAMBRA Env: %w", err)

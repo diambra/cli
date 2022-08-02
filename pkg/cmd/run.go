@@ -83,7 +83,10 @@ func RunFn(logger *log.Logger, c *diambra.EnvConfig, args []string) error {
 	if err != nil {
 		return err
 	}
-	runner := container.NewDockerRunner(logger, client, c.AutoRemove)
+	runner, err := container.NewDockerRunner(logger, client, c.AutoRemove)
+	if err != nil {
+		return err
+	}
 	console := console.Current()
 	d, err := diambra.NewDiambra(logger, console, runner, c)
 	if err != nil {

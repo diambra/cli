@@ -44,13 +44,17 @@ type DockerRunner struct {
 	AutoRemove  bool
 }
 
-func NewDockerRunner(logger log.Logger, client *client.Client, autoRemove bool) *DockerRunner {
+func NewDockerRunner(logger log.Logger, client *client.Client, autoRemove bool) (*DockerRunner, error) {
+	_, err := client.Ping(context.TODO())
+	if err != nil {
+		return nil, fmt.Errorf("couldn't connect to docker. Make sure your user has docker access: %w", err)
+	}
 	return &DockerRunner{
 		Logger:      logger,
 		Client:      client,
 		TimeoutStop: 10 * time.Second,
 		AutoRemove:  autoRemove,
-	}
+	}, nil
 }
 
 func (r *DockerRunner) Pull(c *Container, output *os.File) error {
