@@ -22,6 +22,7 @@ import (
 	"math/big"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"time"
 
@@ -157,8 +158,10 @@ func (d *Diambra) start(envId int, first bool) error {
 		if err != nil {
 			return err
 		}
-		if err := d.console.Resize(ws); err != nil {
-			return fmt.Errorf("couldn't resize console: %w", err)
+		if runtime.GOOS != "windows" {
+			if err := d.console.Resize(ws); err != nil {
+				return fmt.Errorf("couldn't resize console: %w", err)
+			}
 		}
 
 		done := false
