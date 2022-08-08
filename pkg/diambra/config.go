@@ -83,6 +83,8 @@ type EnvConfig struct {
 	Hostname string
 	Mounts   []*container.BindMount
 	mounts   []string
+
+	PreallocatePort bool
 }
 
 func NewConfig() (*EnvConfig, error) {
@@ -102,11 +104,18 @@ func NewConfig() (*EnvConfig, error) {
 	if err != nil {
 		return nil, fmt.Errorf("couldn't get hostname: %w", err)
 	}
+	preallocatePort := false
+	if runtime.GOOS == "windows" {
+		// FIXME: Wrap this in condition that check if runtime is affected
+		// by https://github.com/moby/moby/issues/4393
+		preallocatePort = true
+	}
 	return &EnvConfig{
-		User:     userName,
-		Home:     homedir,
-		Hostname: hostname,
-		Output:   os.Stderr,
+		User:            userName,
+		Home:            homedir,
+		Hostname:        hostname,
+		Output:          os.Stderr,
+		PreallocatePort: preallocatePort,
 	}, nil
 }
 

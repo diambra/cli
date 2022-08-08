@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"io"
 	"math/big"
+	"net"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -124,7 +125,10 @@ func (d *Diambra) start(envId int, first bool) error {
 		return fmt.Errorf("couldn't generate random seed: %w", err)
 	}
 
-	ec := newEnvContainer(d.config, envId, randomSeed)
+	ec, err := newEnvContainer(d.config, envId, randomSeed)
+	if err != nil {
+		return fmt.Errorf("couldn't create env container: %w", err)
+	}
 
 	if first && d.config.PullImage {
 		if err := d.Runner.Pull(ec, d.config.Output); err != nil {
@@ -222,9 +226,18 @@ func (d *Diambra) Start() error {
 	return nil
 }
 
-func newEnvContainer(config *EnvConfig, envID, randomSeed int) *container.Container {
+func newEnvContainer(config *EnvConfig, envID, randomSeed int) (*container.Container, error) {
 	pm := &container.PortMapping{}
-	pm.AddPortMapping(ContainerPort, "0/tcp", "127.0.0.1")
+	hostPort := "0/tcp"
+	if config.PreallocatePort {
+		listener, err := net.Listen("tcp", ":0")
+		if err != nil {
+			return nil, err
+		}
+		hostPort = fmt.Sprintf("%d/tcp", listener.Addr().(*net.TCPAddr).Port)
+	}
+
+	pm.AddPortMapping(ContainerPort, hostPort, "127.0.0.1")
 
 	args := config.AppArgs
 	args.RandomSeed = randomSeed
@@ -256,7 +269,7 @@ func newEnvContainer(config *EnvConfig, envID, randomSeed int) *container.Contai
 	if config.SeccompProfile != "" {
 		c.SecurityOpt = []string{"seccomp=" + config.SeccompProfile}
 	}
-	return c
+	return c, nil
 }
 
 func (e *Diambra) Cleanup() error {
