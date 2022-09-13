@@ -17,6 +17,7 @@ package pyarena
 
 import (
 	_ "embed"
+	"os/exec"
 )
 
 //go:embed check_roms.py
@@ -24,3 +25,19 @@ var CheckRoms string
 
 //go:embed list_roms.py
 var ListRoms string
+
+//go:embed get_diambra_arena_version.py
+var GetDiambraArenaVersion string
+
+func FindPython() string {
+	for _, name := range []string{
+		"python",
+		"python3",
+	} {
+		_, err := exec.LookPath(name)
+		if err == nil {
+			return name
+		}
+	}
+	return "python"
+}

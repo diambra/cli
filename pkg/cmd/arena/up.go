@@ -30,7 +30,7 @@ import (
 )
 
 func NewUpCmd(logger *log.Logger) *cobra.Command {
-	c, err := diambra.NewConfig()
+	c, err := diambra.NewConfig(logger)
 	if err != nil {
 		level.Error(logger).Log("msg", err.Error())
 		os.Exit(1)
