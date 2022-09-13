@@ -16,8 +16,10 @@
 package diambra
 
 import (
+	"bytes"
 	"fmt"
 	"os"
+	"os/exec"
 	"os/user"
 	"path/filepath"
 	"runtime"
@@ -25,10 +27,17 @@ import (
 	"strings"
 
 	"github.com/diambra/cli/pkg/container"
+	"github.com/diambra/cli/pkg/pyarena"
+	"github.com/go-kit/log"
+	"github.com/go-kit/log/level"
 	"github.com/spf13/pflag"
 )
 
-const DefaultEnvImage = "diambra/engine:main"
+const (
+	DefaultEnvRegistry  = "docker.io"
+	DefaultEnvImageName = "diambra/engine"
+	DefaultEnvImageTag  = "latest"
+)
 
 type AppArgs struct {
 	RandomSeed int
@@ -62,6 +71,8 @@ func (a AppArgs) Args() []string {
 }
 
 type EnvConfig struct {
+	logger log.Logger
+
 	AppArgs AppArgs
 
 	Scale      int
@@ -87,7 +98,7 @@ type EnvConfig struct {
 	PreallocatePort bool
 }
 
-func NewConfig() (*EnvConfig, error) {
+func NewConfig(logger log.Logger) (*EnvConfig, error) {
 	userName := ""
 	if runtime.GOOS != "windows" {
 		u, err := user.Current()
@@ -111,6 +122,7 @@ func NewConfig() (*EnvConfig, error) {
 		preallocatePort = true
 	}
 	return &EnvConfig{
+		logger:          logger,
 		User:            userName,
 		Home:            homedir,
 		Hostname:        hostname,
@@ -140,7 +152,7 @@ func (c *EnvConfig) AddFlags(flags *pflag.FlagSet) {
 	// Flags to configure env container
 	flags.IntVarP(&c.Scale, "env.scale", "s", 1, "Number of environments to run")
 	flags.BoolVarP(&c.AutoRemove, "env.autoremove", "x", true, "Remove containers on exit")
-	flags.StringVarP(&c.Image, "env.image", "e", DefaultEnvImage, "Env image to use")
+	flags.StringVarP(&c.Image, "env.image", "e", "", "Env image to use, omit to detect from diambra-arena version")
 	flags.StringVar(&c.SeccompProfile, "env.seccomp", "unconfined", "Path to seccomp profile to use for env (may slow down environment). Set to \"\" for runtime's default profile.")
 	flags.StringSliceVar(&c.mounts, "env.mount", []string{}, "Host mounts for env container (/host/path:/container/path)")
 
@@ -177,6 +189,21 @@ func (c *EnvConfig) Validate() error {
 		}
 		fh.Close()
 	}
+	if c.Image == "" {
+		tag := DefaultEnvImageTag
+		parts, err := getDiambraArenaVersion()
+		if err != nil || len(parts) < 2 {
+			level.Warn(c.logger).Log(
+				"msg", "Can't find diambra-arena package to automatically configure env image, using default version. Did you activate your virtual/condaenv?",
+				"tag", DefaultEnvImageTag,
+				"err", fmt.Sprintf("%v", err),
+			)
+		} else {
+			tag = "v" + strings.Join(parts[:2], ".")
+		}
+		c.Image = fmt.Sprintf("%s/%s:%s", DefaultEnvRegistry, DefaultEnvImageName, tag)
+	}
+
 	c.Mounts = make([]*container.BindMount, len(c.mounts))
 	for i, m := range c.mounts {
 		p := strings.SplitN(m, ":", 2)
@@ -186,6 +213,18 @@ func (c *EnvConfig) Validate() error {
 		c.Mounts[i] = container.NewBindMount(p[0], p[1])
 	}
 	return nil
+}
+
+// Use pyarena script find diambra-arena version and use that as tag for the env image returned
+func getDiambraArenaVersion() ([]string, error) {
+	cmd := exec.Command(pyarena.FindPython(), "-c", pyarena.GetDiambraArenaVersion)
+	stdout := &bytes.Buffer{}
+
+	cmd.Stdout = stdout
+	if err := cmd.Run(); err != nil {
+		return nil, err
+	}
+	return strings.Split(strings.TrimSpace(stdout.String()), "."), nil
 }
 
 func pathExistsAndIsDir(path string) (bool, bool) {
