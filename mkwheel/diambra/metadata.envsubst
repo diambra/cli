@@ -1,7 +1,7 @@
 Metadata-Version: 2.1
 Name: diambra
 Version: $VERSION
-Summary: DIAMBRA cli
+Summary: DIAMBRA™ Command Line Interface
 Description-Content-Type: text/markdown
 License: Apache-2.0
 Classifier: Development Status :: 3 - Alpha
