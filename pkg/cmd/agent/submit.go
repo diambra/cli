@@ -16,17 +16,36 @@
 package agent
 
 import (
-	"fmt"
+	"os"
 
+	"github.com/diambra/cli/pkg/diambra"
+	"github.com/diambra/cli/pkg/log"
+	"github.com/go-kit/log/level"
 	"github.com/spf13/cobra"
 )
 
-// submitCmd represents the submit command
-var SubmitCmd = &cobra.Command{
-	Use:   "submit",
-	Short: "Submits an agent for evaluation",
-	Long:  `This takes a local agent, builds a container for it and submits it for evaluation.`,
-	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("submit called")
-	},
+func NewSubmitCmd(logger *log.Logger) *cobra.Command {
+	var (
+		mode string
+	)
+	c, err := diambra.NewConfig(logger)
+	if err != nil {
+		level.Error(logger).Log("msg", err.Error())
+		os.Exit(1)
+	}
+	cmd := &cobra.Command{
+		Use:   "submit docker-image",
+		Short: "Submits an agent for evaluation",
+		Long:  `This takes a local agent, builds a container for it and submits it for evaluation.`,
+		Args:  cobra.ExactArgs(1),
+		Run: func(cmd *cobra.Command, args []string) {
+			if err := diambra.Submit(logger, args[0], diambra.Mode(mode), c.Home); err != nil {
+				level.Error(logger).Log("msg", "failed to submit agent", "err", err.Error())
+				os.Exit(1)
+			}
+			level.Info(logger).Log("msg", "Agent submitted")
+		},
+	}
+	cmd.Flags().StringVar(&mode, "mode", string(diambra.ModeAIvsCOM), "Mode to use for evaluation")
+	return cmd
 }
