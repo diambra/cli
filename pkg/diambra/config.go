@@ -16,10 +16,8 @@
 package diambra
 
 import (
-	"bytes"
 	"fmt"
 	"os"
-	"os/exec"
 	"os/user"
 	"path/filepath"
 	"runtime"
@@ -27,7 +25,6 @@ import (
 	"strings"
 
 	"github.com/diambra/cli/pkg/container"
-	"github.com/diambra/cli/pkg/pyarena"
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	"github.com/spf13/pflag"
@@ -191,7 +188,7 @@ func (c *EnvConfig) Validate() error {
 	}
 	if c.Image == "" {
 		tag := DefaultEnvImageTag
-		parts, err := getDiambraArenaVersion()
+		parts, err := GetInstalledDiambraArenaVersion()
 		if err != nil || len(parts) < 2 {
 			level.Warn(c.logger).Log(
 				"msg", "Can't find diambra-arena package to automatically configure env image, using default version. Did you activate your virtual/condaenv?",
@@ -213,18 +210,6 @@ func (c *EnvConfig) Validate() error {
 		c.Mounts[i] = container.NewBindMount(p[0], p[1])
 	}
 	return nil
-}
-
-// Use pyarena script find diambra-arena version and use that as tag for the env image returned
-func getDiambraArenaVersion() ([]string, error) {
-	cmd := exec.Command(pyarena.FindPython(), "-c", pyarena.GetDiambraArenaVersion)
-	stdout := &bytes.Buffer{}
-
-	cmd.Stdout = stdout
-	if err := cmd.Run(); err != nil {
-		return nil, err
-	}
-	return strings.Split(strings.TrimSpace(stdout.String()), "."), nil
 }
 
 func pathExistsAndIsDir(path string) (bool, bool) {

@@ -37,8 +37,10 @@ func NewDiambraCommand() *cobra.Command {
 			Use:   "diambra",
 			Short: "The DIAMBRA cli",
 			Long: `Quickstart:
-- Run 'diambra agent init' to create a example agent.
-- Run 'diambra run ./agent.py' to bring up DIAMBRA arena and run agent.py
+- Run 'diambra agent init path/to/agent' to create a example agent.
+- Run 'diambra run path/to/agent/agent.py' to bring up DIAMBRA arena and run agent.py
+- Run 'docker build -t registry/user/agent:latest path/to/agent' to build your agent's Docker image
+- Run 'diambra agent submit registry/user/agent:latest' to submit your agent to DIAMBRA
 `,
 			PersistentPreRun: func(cmd *cobra.Command, args []string) {
 				if err := logger.SetOptions(debug, logFormat); err != nil {
