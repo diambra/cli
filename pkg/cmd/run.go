@@ -16,6 +16,7 @@
 package cmd
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -47,12 +48,11 @@ func NewCmdRun(logger *log.Logger) *cobra.Command {
 		Use:   "run",
 		Short: "Runs a command with DIAMBRA arena started",
 		Long: `Run runs the given command after diambraEngine is brought up.
-		
+
 It will set the DIAMBRA_ENVS environment variable to list the endpoints of all running environments.
 The DIAMBRA arena python package will automatically be configured by this.
 
 The flag --agent-image can be used to run the commands in the given image.`,
-		Args: cobra.MinimumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			level.Debug(logger).Log("config", fmt.Sprintf("%#v", c))
 			if err := RunFn(logger, c, args); err != nil {
@@ -125,7 +125,9 @@ func RunFn(logger *log.Logger, c *diambra.EnvConfig, args []string) error {
 	if c.AgentImage != "" {
 		return d.RunAgentImage(c.AgentImage, args)
 	}
-
+	if len(args) == 0 {
+		return errors.New("command required when not using --agent-image")
+	}
 	ex := exec.Command(args[0], args[1:]...)
 	ex.Env = os.Environ()
 	ex.Env = append(ex.Env, fmt.Sprintf("DIAMBRA_ENVS=%s", envs))
