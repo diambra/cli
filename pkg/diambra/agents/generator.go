@@ -62,7 +62,7 @@ func NewConfig(logger log.Logger) (*Config, error) {
 			Version: strings.Join(arenaVersion, "."),
 		},
 		Python: PythonConfig{
-			Version: "3.7",
+			Version: "3.7", // FIXME: Detect version
 		},
 		BaseImage: BaseImageConfig{
 			Registry: "docker.io",

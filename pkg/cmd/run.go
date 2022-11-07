@@ -97,7 +97,10 @@ func RunFn(logger *log.Logger, c *diambra.EnvConfig, args []string) error {
 			level.Error(logger).Log("msg", "Couldn't cleanup DIAMBRA Env", "err", err.Error())
 		}
 	}()
-	signalCh := make(chan os.Signal, 1)
+	var (
+		signalCh = make(chan os.Signal, 1)
+		ex       *exec.Cmd
+	)
 	signal.Notify(signalCh, os.Interrupt, syscall.SIGTERM)
 	go func() {
 		s := <-signalCh
@@ -107,6 +110,11 @@ func RunFn(logger *log.Logger, c *diambra.EnvConfig, args []string) error {
 		}
 		if err := d.Cleanup(); err != nil {
 			level.Error(logger).Log("msg", "cleanup failed", "err", err.Error())
+		}
+		if ex != nil {
+			if err := ex.Process.Kill(); err != nil {
+				level.Error(logger).Log("msg", "Couldn't kill process", "err", err.Error())
+			}
 		}
 		os.Exit(1)
 	}()
@@ -128,7 +136,8 @@ func RunFn(logger *log.Logger, c *diambra.EnvConfig, args []string) error {
 	if len(args) == 0 {
 		return errors.New("command required when not using --agent-image")
 	}
-	ex := exec.Command(args[0], args[1:]...)
+
+	ex = exec.Command(args[0], args[1:]...)
 	ex.Env = os.Environ()
 	ex.Env = append(ex.Env, fmt.Sprintf("DIAMBRA_ENVS=%s", envs))
 	if c.Interactive {
