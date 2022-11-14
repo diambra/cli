@@ -26,7 +26,8 @@ import (
 
 func NewSubmitCmd(logger *log.Logger) *cobra.Command {
 	var (
-		mode string
+		mode    string
+		envVars map[string]string
 	)
 	c, err := diambra.NewConfig(logger)
 	if err != nil {
@@ -39,7 +40,7 @@ func NewSubmitCmd(logger *log.Logger) *cobra.Command {
 		Long:  `This takes a local agent, builds a container for it and submits it for evaluation.`,
 		Args:  cobra.ExactArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
-			if err := diambra.Submit(logger, args[0], diambra.Mode(mode), c.Home); err != nil {
+			if err := diambra.Submit(logger, args[0], diambra.Mode(mode), c.Home, envVars); err != nil {
 				level.Error(logger).Log("msg", "failed to submit agent", "err", err.Error())
 				os.Exit(1)
 			}
@@ -47,5 +48,6 @@ func NewSubmitCmd(logger *log.Logger) *cobra.Command {
 		},
 	}
 	cmd.Flags().StringVar(&mode, "mode", string(diambra.ModeAIvsCOM), "Mode to use for evaluation")
+	cmd.Flags().StringToStringVarP(&envVars, "env", "e", envVars, "Environment variables to pass to the agent")
 	return cmd
 }
