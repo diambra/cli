@@ -16,6 +16,7 @@
 package agent
 
 import (
+	"fmt"
 	"os"
 
 	"github.com/diambra/cli/pkg/diambra"
@@ -50,11 +51,12 @@ func NewSubmitCmd(logger *log.Logger) *cobra.Command {
 				level.Error(logger).Log("msg", "either image or manifest path must be provided")
 				os.Exit(1)
 			}
-			if err := diambra.Submit(logger, image, diambra.Mode(mode), c.Home, envVars, sources, secrets, manifestPath); err != nil {
+			id, err := diambra.Submit(logger, image, diambra.Mode(mode), c.Home, envVars, sources, secrets, manifestPath)
+			if err != nil {
 				level.Error(logger).Log("msg", "failed to submit agent", "err", err.Error())
 				os.Exit(1)
 			}
-			level.Info(logger).Log("msg", "Agent submitted")
+			level.Info(logger).Log("msg", fmt.Sprintf("Agent submitted: https://diambra.ai/submission/%d", id), "id", id)
 		},
 	}
 	cmd.Flags().StringVar(&mode, "mode", string(diambra.ModeAIvsCOM), "Mode to use for evaluation")

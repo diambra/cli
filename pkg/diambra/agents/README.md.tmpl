@@ -1,0 +1,34 @@
+# DIAMBRA Agent
+
+This is a sample agent consisting of the following files:
+
+- [agent.py](agent.py) - The agent code
+- [requirements.txt](requirements.txt) - The dependencies for the agent
+- [Dockerfile](Dockerfile) - To build the image with all agent dependencies
+
+
+## Usage
+
+### Create public image with dependencies
+
+1. Edit `requirements.txt` to add your dependencies
+2. Build the image with `docker build -t registry/image .`
+  1. You can use any public registry for this, like [quay.io](quay.io) or [dockerhub](dockerhub.com)
+3. Push the image to the registry with `docker push registry/image`
+
+This image needs to be public so that it can be pulled by the DIAMBRA platform.
+
+### Create private agent and model
+1. Edit agent.py to add your code
+2. Train your agent
+3. Host your agent and model somewhere where it can be accessed by the DIAMBRA platform
+    1. You can use any service that provides the files via https, like [github](github.com),
+       [gitlab](gitlab.com) or [huggingface](huggingface.co)
+4. Edit [submission.yaml](submission.yaml) and:
+    1. Specify the image you created in the previous step
+    2. Add your agent and model urls, using {{`{{ .Secrets.<secret_name> }}`}} to reference secrets
+
+**DO NOT ADD SECRETS DIRECTLY TO THE MANIFEST. THEY WILL BE PUBLICLY VISIBLE.**
+
+### Submit agent
+Run `diambra agent submit --manifest submission.yaml -s <secret_name>=<secret_value>` to submit your agent.

@@ -26,6 +26,12 @@ var RequirementsTxt string
 //go:embed agent.py.tmpl
 var AgentPyTemplate string
 
+//go:embed submission.yaml.tmpl
+var SubmissionTemplate string
+
+//go:embed README.md.tmpl
+var ReadmeTemplate string
+
 var differ = diffmatchpatch.New()
 
 type PythonConfig struct {
@@ -120,6 +126,8 @@ func Generate(logger log.Logger, path string, config *Config) error {
 		"Dockerfile":       DockerfileTemplate,
 		"requirements.txt": RequirementsTxt,
 		"agent.py":         AgentPyTemplate,
+		"submission.yaml":  SubmissionTemplate,
+		"README.md":        ReadmeTemplate,
 	} {
 		if err := WriteFile(logger, path, name, tmpl, config); err != nil {
 			return err

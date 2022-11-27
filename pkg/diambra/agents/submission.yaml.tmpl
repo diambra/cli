@@ -1,0 +1,11 @@
+---
+mode: AIvsCOM
+image: your/image:latest
+command:
+- python
+- "/sources/agent.py"
+- play
+- "/sources/model.zip"
+sources:
+  agent.py: https://ziemke:{{`{{.Secrets.token}}`}}@example.com/agent.py
+  model.zip: https://ziemke:{{`{{.Secrets.token}}`}}@example.com/model.zip

@@ -10,6 +10,7 @@ import (
 
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
+	"gopkg.in/yaml.v2"
 )
 
 // FIXME: Replace this with oapi generated code
@@ -24,12 +25,12 @@ const (
 )
 
 type Manifest struct {
-	Image      string            `json:"image"`
-	Mode       Mode              `json:"mode"`
-	Difficulty string            `json:"difficulty"`
-	Command    []string          `json:"command"`
-	Env        map[string]string `json:"env"`
-	Sources    map[string]string `json:"sources"`
+	Image      string            `yaml:"image" json:"image"`
+	Mode       Mode              `yaml:"mode" json:"mode"`
+	Difficulty string            `yaml:"difficulty" json:"difficulty"`
+	Command    []string          `yaml:"command" json:"command"`
+	Env        map[string]string `yaml:"env" json:"env"`
+	Sources    map[string]string `yaml:"sources" json:"sources"`
 }
 
 type submission struct {
@@ -37,17 +38,22 @@ type submission struct {
 	Secrets  map[string]string `json:"secrets"`
 }
 
-func Submit(logger log.Logger, image string, mode Mode, homedir string, envVars, sources, secrets map[string]string, manifestPath string) error {
+type submitResponse struct {
+	submission
+	ID int `json:"id"`
+}
+
+func Submit(logger log.Logger, image string, mode Mode, homedir string, envVars, sources, secrets map[string]string, manifestPath string) (int, error) {
 	// Decode manifestPath
 	var manifest Manifest
 	if manifestPath != "" {
 		f, err := os.Open(manifestPath)
 		if err != nil {
-			return fmt.Errorf("failed to open manifest: %w", err)
+			return 0, fmt.Errorf("failed to open manifest: %w", err)
 		}
 		defer f.Close()
-		if err := json.NewDecoder(f).Decode(&manifest); err != nil {
-			return fmt.Errorf("failed to decode manifest: %w", err)
+		if err := yaml.NewDecoder(f).Decode(&manifest); err != nil {
+			return 0, fmt.Errorf("failed to decode manifest: %w", err)
 		}
 	}
 	if image != "" {
@@ -68,12 +74,12 @@ func Submit(logger log.Logger, image string, mode Mode, homedir string, envVars,
 
 	data, err := json.Marshal(m)
 	if err != nil {
-		return err
+		return 0, err
 	}
 	credFile := filepath.Join(homedir, ".diambra", "credentials")
 	b, err := os.ReadFile(filepath.Join(credFile))
 	if err != nil {
-		return err
+		return 0, err
 	}
 	level.Debug(logger).Log("msg", "Submitting", "data", string(data))
 	req, err := http.NewRequest(
@@ -82,17 +88,21 @@ func Submit(logger log.Logger, image string, mode Mode, homedir string, envVars,
 		bytes.NewBuffer(data),
 	)
 	if err != nil {
-		return err
+		return 0, err
 	}
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Authorization", "Token "+string(b))
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
-		return err
+		return 0, err
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusCreated {
-		return fmt.Errorf("failed to submit: %s", resp.Status)
+		return 0, fmt.Errorf("failed to submit: %s", resp.Status)
 	}
-	return nil
+	var s submitResponse
+	if err := json.NewDecoder(resp.Body).Decode(&s); err != nil {
+		return 0, err
+	}
+	return s.ID, nil
 }
