@@ -28,7 +28,7 @@ type Logger struct {
 }
 
 func New() *Logger {
-	return &Logger{Logger: log.NewLogfmtLogger(os.Stderr)}
+	return &Logger{Logger: log.With(log.NewLogfmtLogger(os.Stderr), "caller", log.Caller(4))}
 }
 
 func (l *Logger) SetOptions(debug bool, logFormat string) error {
