@@ -26,8 +26,11 @@ import (
 
 func NewSubmitCmd(logger *log.Logger) *cobra.Command {
 	var (
-		mode    string
-		envVars map[string]string
+		mode         string
+		envVars      map[string]string
+		sources      map[string]string
+		secrets      map[string]string
+		manifestPath string
 	)
 	c, err := diambra.NewConfig(logger)
 	if err != nil {
@@ -38,9 +41,16 @@ func NewSubmitCmd(logger *log.Logger) *cobra.Command {
 		Use:   "submit docker-image",
 		Short: "Submits an agent for evaluation",
 		Long:  `This takes a local agent, builds a container for it and submits it for evaluation.`,
-		Args:  cobra.ExactArgs(1),
+		Args:  cobra.MaximumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
-			if err := diambra.Submit(logger, args[0], diambra.Mode(mode), c.Home, envVars); err != nil {
+			image := ""
+			if len(args) > 0 {
+				image = args[0]
+			} else if manifestPath == "" {
+				level.Error(logger).Log("msg", "either image or manifest path must be provided")
+				os.Exit(1)
+			}
+			if err := diambra.Submit(logger, image, diambra.Mode(mode), c.Home, envVars, sources, secrets, manifestPath); err != nil {
 				level.Error(logger).Log("msg", "failed to submit agent", "err", err.Error())
 				os.Exit(1)
 			}
@@ -49,5 +59,8 @@ func NewSubmitCmd(logger *log.Logger) *cobra.Command {
 	}
 	cmd.Flags().StringVar(&mode, "mode", string(diambra.ModeAIvsCOM), "Mode to use for evaluation")
 	cmd.Flags().StringToStringVarP(&envVars, "env", "e", envVars, "Environment variables to pass to the agent")
+	cmd.Flags().StringToStringVarP(&sources, "source", "u", sources, "Source urls to pass to the agent")
+	cmd.Flags().StringToStringVarP(&secrets, "secret", "s", secrets, "Secrets to pass to the agent")
+	cmd.Flags().StringVar(&manifestPath, "manifest", manifestPath, "Path to manifest file.")
 	return cmd
 }
