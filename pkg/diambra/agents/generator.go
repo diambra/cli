@@ -54,18 +54,18 @@ type Config struct {
 }
 
 func NewConfig(logger log.Logger) (*Config, error) {
-	arenaVersion, err := diambra.GetInstalledDiambraArenaVersion()
-	if err != nil {
+	parts, err := diambra.GetInstalledDiambraArenaVersion()
+	if err != nil || len(parts) != 3 || (parts[0] == "0" && parts[1] == "0" && parts[2] == "0") {
 		level.Info(logger).Log("msg", "can't find local diambra-arena version, using latest", "err", err)
-		arenaVersion, err = diambra.GetLatestDiambraArenaVersion()
+		parts, err = diambra.GetLatestDiambraArenaVersion()
 		if err != nil {
 			return nil, err
 		}
 	}
-	level.Debug(logger).Log("msg", "using diambra-arena version", "version", strings.Join(arenaVersion, "."))
+	level.Debug(logger).Log("msg", "using diambra-arena version", "version", strings.Join(parts, "."))
 	return &Config{
 		Arena: ArenaConfig{
-			Version: strings.Join(arenaVersion, "."),
+			Version: strings.Join(parts, "."),
 		},
 		Python: PythonConfig{
 			Version: "3.7", // FIXME: Detect version
