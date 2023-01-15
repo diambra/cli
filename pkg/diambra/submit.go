@@ -29,14 +29,14 @@ type Manifest struct {
 	Image      string            `yaml:"image" json:"image"`
 	Mode       Mode              `yaml:"mode" json:"mode"`
 	Difficulty string            `yaml:"difficulty" json:"difficulty"`
-	Command    []string          `yaml:"command" json:"command"`
-	Env        map[string]string `yaml:"env" json:"env"`
-	Sources    map[string]string `yaml:"sources" json:"sources"`
+	Command    []string          `yaml:"command" json:"command,omitempty"`
+	Env        map[string]string `yaml:"env" json:"env,omitempty"`
+	Sources    map[string]string `yaml:"sources" json:"sources,omitempty"`
 }
 
 type submission struct {
 	Manifest Manifest          `json:"manifest"`
-	Secrets  map[string]string `json:"secrets"`
+	Secrets  map[string]string `json:"secrets,omitempty"`
 }
 
 type submitResponse struct {
@@ -44,7 +44,25 @@ type submitResponse struct {
 	ID int `json:"id"`
 }
 
+func readCredentials(homedir string) (string, error) {
+	creds := os.Getenv("DIAMBRA_TOKEN")
+	if creds != "" {
+		return creds, nil
+	}
+	credFile := filepath.Join(homedir, ".diambra", "credentials")
+	b, err := os.ReadFile(filepath.Join(credFile))
+	if err != nil {
+		return "", err
+	}
+	return string(b), nil
+}
+
 func Submit(logger log.Logger, image string, mode Mode, homedir string, envVars, sources, secrets map[string]string, manifestPath string) (int, error) {
+	apiURL := os.Getenv("DIAMBRA_API_URL")
+	if apiURL == "" {
+		apiURL = API
+	}
+	logger = log.With(logger, "api", apiURL)
 	// Decode manifestPath
 	var manifest Manifest
 	if manifestPath != "" {
@@ -59,6 +77,12 @@ func Submit(logger log.Logger, image string, mode Mode, homedir string, envVars,
 	}
 	if image != "" {
 		manifest.Image = image
+	}
+	if mode != "" {
+		manifest.Mode = mode
+	}
+	if manifest.Image == "" {
+		return 0, fmt.Errorf("image is required")
 	}
 
 	for k, v := range envVars {
@@ -77,22 +101,21 @@ func Submit(logger log.Logger, image string, mode Mode, homedir string, envVars,
 	if err != nil {
 		return 0, err
 	}
-	credFile := filepath.Join(homedir, ".diambra", "credentials")
-	b, err := os.ReadFile(filepath.Join(credFile))
+	creds, err := readCredentials(homedir)
 	if err != nil {
 		return 0, err
 	}
 	level.Debug(logger).Log("msg", "Submitting", "data", string(data))
 	req, err := http.NewRequest(
 		"POST",
-		API+"/submit",
+		apiURL+"/submit",
 		bytes.NewBuffer(data),
 	)
 	if err != nil {
 		return 0, err
 	}
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Authorization", "Token "+string(b))
+	req.Header.Set("Authorization", "Token "+creds)
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		return 0, err
