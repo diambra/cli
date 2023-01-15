@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -98,7 +99,11 @@ func Submit(logger log.Logger, image string, mode Mode, homedir string, envVars,
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusCreated {
-		return 0, fmt.Errorf("failed to submit: %s", resp.Status)
+		errResp, err := io.ReadAll(resp.Body)
+		if err != nil {
+			errResp = []byte(fmt.Sprintf("failed to read error response: %s", err))
+		}
+		return 0, fmt.Errorf("failed to submit: %s: %s", resp.Status, errResp)
 	}
 	var s submitResponse
 	if err := json.NewDecoder(resp.Body).Decode(&s); err != nil {
