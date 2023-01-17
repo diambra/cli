@@ -24,8 +24,23 @@ import (
 	"github.com/go-kit/log/level"
 )
 
+const FancyPrefix = "\033[0G\033[2K"
+
 func NewFancyLogger(w io.Writer) log.Logger {
 	return &fancyLogger{w}
+}
+
+func format(v interface{}) string {
+	switch val := v.(type) {
+	case string:
+		return val
+	case error:
+		return val.Error()
+	case int:
+		return fmt.Sprintf("%d", v)
+	default:
+		return fmt.Sprintf("%v", v)
+	}
 }
 
 func (l *fancyLogger) Log(kvs ...interface{}) error {
@@ -47,11 +62,17 @@ func (l *fancyLogger) Log(kvs ...interface{}) error {
 		case string:
 			switch k {
 			case "err":
-				errstr = ": " + val.(string)
+				errstr = ": " + format(val)
 			case "msg":
-				msg = val.(string)
+				msg = format(val)
 			case "id":
-				id = fmt.Sprintf("(%s) ", val.(string)[:4])
+				fullId := format(val)
+				// Use up to first 4 characters of the ID
+				l := len(fullId)
+				if l > 4 {
+					l = 4
+				}
+				id = fmt.Sprintf("(%s) ", fullId[:l])
 			case "source":
 				switch val.(string) {
 				case "agent":
@@ -62,22 +83,22 @@ func (l *fancyLogger) Log(kvs ...interface{}) error {
 					icon = "🖥️  "
 				}
 			case "level":
-				switch val.(level.Value).String() {
-				case "warn":
-					col = color.New(color.FgYellow)
-				case "error":
-					col = color.New(color.FgRed)
-				case "info":
-					col = color.New(color.FgHiWhite)
-				case "debug":
-					col = color.New(color.FgHiBlack)
+				c, ok := Colors[val.(level.Value).String()]
+				if ok {
+					col = c
 				}
 			}
 		}
 	}
-
-	col.Fprintf(l.w, "\033[0G\033[2K%s%s%s%s\n", icon, id, msg, errstr)
+	col.Fprintf(l.w, "%s%s%s%s%s\n", FancyPrefix, icon, id, msg, errstr)
 	return nil
+}
+
+var Colors = map[string]*color.Color{
+	"warn":  color.New(color.FgYellow),
+	"error": color.New(color.FgRed),
+	"info":  color.New(color.FgHiWhite),
+	"debug": color.New(color.FgHiBlack),
 }
 
 type fancyLogger struct {
