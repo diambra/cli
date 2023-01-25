@@ -11,7 +11,6 @@ import (
 
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
-	"gopkg.in/yaml.v2"
 )
 
 // FIXME: Replace this with oapi generated code
@@ -28,19 +27,19 @@ const (
 type Manifest struct {
 	Image      string            `yaml:"image" json:"image"`
 	Mode       Mode              `yaml:"mode" json:"mode"`
-	Difficulty string            `yaml:"difficulty" json:"difficulty"`
-	Command    []string          `yaml:"command" json:"command,omitempty"`
-	Env        map[string]string `yaml:"env" json:"env,omitempty"`
-	Sources    map[string]string `yaml:"sources" json:"sources,omitempty"`
+	Difficulty string            `yaml:"difficulty,omitempty" json:"difficulty,omitempty"`
+	Command    []string          `yaml:"command,omitempty" json:"command,omitempty"`
+	Env        map[string]string `yaml:"env,omitempty" json:"env,omitempty"`
+	Sources    map[string]string `yaml:"sources,omitempty" json:"sources,omitempty"`
 }
 
-type submission struct {
-	Manifest Manifest          `json:"manifest"`
-	Secrets  map[string]string `json:"secrets,omitempty"`
+type Submission struct {
+	Manifest Manifest          `yaml:"manifest" json:"manifest"`
+	Secrets  map[string]string `yaml:"secrets,omitempty" json:"secrets,omitempty"`
 }
 
 type submitResponse struct {
-	submission
+	Submission
 	ID int `json:"id"`
 }
 
@@ -57,50 +56,14 @@ func readCredentials(homedir string) (string, error) {
 	return string(b), nil
 }
 
-func Submit(logger log.Logger, image string, mode Mode, difficulty, homedir string, envVars, sources, secrets map[string]string, manifestPath string) (int, error) {
+func Submit(logger log.Logger, homedir string, submission *Submission) (int, error) {
 	apiURL := os.Getenv("DIAMBRA_API_URL")
 	if apiURL == "" {
 		apiURL = API
 	}
 	logger = log.With(logger, "api", apiURL)
-	// Decode manifestPath
-	var manifest Manifest
-	if manifestPath != "" {
-		f, err := os.Open(manifestPath)
-		if err != nil {
-			return 0, fmt.Errorf("failed to open manifest: %w", err)
-		}
-		defer f.Close()
-		if err := yaml.NewDecoder(f).Decode(&manifest); err != nil {
-			return 0, fmt.Errorf("failed to decode manifest: %w", err)
-		}
-	}
-	if image != "" {
-		manifest.Image = image
-	}
-	if mode != "" {
-		manifest.Mode = mode
-	}
-	if difficulty != "" {
-		manifest.Difficulty = difficulty
-	}
-	if manifest.Image == "" {
-		return 0, fmt.Errorf("image is required")
-	}
 
-	for k, v := range envVars {
-		manifest.Env[k] = v
-	}
-	for k, v := range sources {
-		manifest.Sources[k] = v
-	}
-
-	m := submission{
-		Manifest: manifest,
-		Secrets:  secrets,
-	}
-
-	data, err := json.Marshal(m)
+	data, err := json.Marshal(submission)
 	if err != nil {
 		return 0, err
 	}

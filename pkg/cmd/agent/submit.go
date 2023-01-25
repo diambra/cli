@@ -23,36 +23,45 @@ import (
 	"github.com/diambra/cli/pkg/log"
 	"github.com/go-kit/log/level"
 	"github.com/spf13/cobra"
+	"gopkg.in/yaml.v2"
 )
 
 func NewSubmitCmd(logger *log.Logger) *cobra.Command {
-	var (
-		mode         string
-		difficulty   string
-		envVars      map[string]string
-		sources      map[string]string
-		secrets      map[string]string
-		manifestPath string
-	)
+	dump := false
+	submissionConfig := diambra.NewSubmissionConfig(logger)
 	c, err := diambra.NewConfig(logger)
 	if err != nil {
 		level.Error(logger).Log("msg", err.Error())
 		os.Exit(1)
 	}
+
 	cmd := &cobra.Command{
-		Use:   "submit docker-image",
+		Use:   "submit [--manifest submission-manifest.yaml | docker-image]",
 		Short: "Submits an agent for evaluation",
-		Long:  `This takes a local agent, builds a container for it and submits it for evaluation.`,
+		Long:  `This takes a docker image or submission manifest and submits it for evaluation.`,
 		Args:  cobra.MaximumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
-			image := ""
 			if len(args) > 0 {
-				image = args[0]
-			} else if manifestPath == "" {
+				submissionConfig.Image = args[0]
+			} else if submissionConfig.ManifestPath == "" {
 				level.Error(logger).Log("msg", "either image or manifest path must be provided")
 				os.Exit(1)
 			}
-			id, err := diambra.Submit(logger, image, diambra.Mode(mode), difficulty, c.Home, envVars, sources, secrets, manifestPath)
+			submission, err := submissionConfig.Submission()
+			if err != nil {
+				level.Error(logger).Log("msg", "failed to configure manifest", "err", err.Error())
+				os.Exit(1)
+			}
+			if dump {
+				b, err := yaml.Marshal(submission)
+				if err != nil {
+					level.Error(logger).Log("msg", "failed to marshal manifest", "err", err.Error())
+					os.Exit(1)
+				}
+				fmt.Println(string(b))
+				return
+			}
+			id, err := diambra.Submit(logger, c.Home, submission)
 			if err != nil {
 				level.Error(logger).Log("msg", "failed to submit agent", "err", err.Error())
 				os.Exit(1)
@@ -60,11 +69,7 @@ func NewSubmitCmd(logger *log.Logger) *cobra.Command {
 			level.Info(logger).Log("msg", fmt.Sprintf("Agent submitted: https://diambra.ai/submission/%d", id), "id", id)
 		},
 	}
-	cmd.Flags().StringVar(&mode, "mode", string(diambra.ModeAIvsCOM), "Mode to use for evaluation")
-	cmd.Flags().StringVar(&difficulty, "difficulty", "easy", "Difficulty to use for evaluation")
-	cmd.Flags().StringToStringVarP(&envVars, "env", "e", envVars, "Environment variables to pass to the agent")
-	cmd.Flags().StringToStringVarP(&sources, "source", "u", sources, "Source urls to pass to the agent")
-	cmd.Flags().StringToStringVarP(&secrets, "secret", "s", secrets, "Secrets to pass to the agent")
-	cmd.Flags().StringVar(&manifestPath, "manifest", manifestPath, "Path to manifest file.")
+	submissionConfig.AddFlags(cmd.Flags())
+	cmd.Flags().BoolVar(&dump, "dump", false, "Dump the manifest to stdout instead of submitting")
 	return cmd
 }

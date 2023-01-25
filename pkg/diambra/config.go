@@ -28,6 +28,7 @@ import (
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	"github.com/spf13/pflag"
+	"gopkg.in/yaml.v2"
 )
 
 const (
@@ -149,7 +150,7 @@ func (c *EnvConfig) AddFlags(flags *pflag.FlagSet) {
 	// Flags to configure env container
 	flags.IntVarP(&c.Scale, "env.scale", "s", 1, "Number of environments to run")
 	flags.BoolVarP(&c.AutoRemove, "env.autoremove", "x", true, "Remove containers on exit")
-	flags.StringVarP(&c.Image, "env.image", "e", "", "Env image to use, omit to detect from diambra-arena version")
+	flags.StringVar(&c.Image, "env.image", "", "Env image to use, omit to detect from diambra-arena version")
 	flags.StringVar(&c.SeccompProfile, "env.seccomp", "unconfined", "Path to seccomp profile to use for env (may slow down environment). Set to \"\" for runtime's default profile.")
 	flags.StringSliceVar(&c.mounts, "env.mount", []string{}, "Host mounts for env container (/host/path:/container/path)")
 
@@ -160,7 +161,6 @@ func (c *EnvConfig) AddFlags(flags *pflag.FlagSet) {
 
 	// Agent flags
 	flags.StringVarP(&c.AgentImage, "agent.image", "a", "", "Run given agent command in container")
-
 }
 
 func (c *EnvConfig) Validate() error {
@@ -221,4 +221,91 @@ func pathExistsAndIsDir(path string) (bool, bool) {
 		panic(err)
 	}
 	return true, fi.IsDir()
+}
+
+type Difficulty string
+
+const (
+	DifficultyEasy   Difficulty = "easy"
+	DifficultyMedium Difficulty = "medium"
+	DifficultyHard   Difficulty = "hard"
+)
+
+type SubmissionConfig struct {
+	logger log.Logger
+
+	Image        string
+	Mode         string
+	Difficulty   string
+	EnvVars      map[string]string
+	Sources      map[string]string
+	Secrets      map[string]string
+	ManifestPath string
+}
+
+func NewSubmissionConfig(logger log.Logger) *SubmissionConfig {
+	return &SubmissionConfig{
+		logger: logger,
+	}
+}
+
+func (c *SubmissionConfig) AddFlags(flags *pflag.FlagSet) {
+	level.Debug(c.logger).Log("msg", "Adding submission flags")
+
+	flags.StringVar(&c.Mode, "submission.mode", string(ModeAIvsCOM), "Mode to use for evaluation")
+	flags.StringVar(&c.Difficulty, "submission.difficulty", string(DifficultyEasy), "Difficulty to use for evaluation")
+	flags.StringToStringVarP(&c.EnvVars, "submission.env", "e", nil, "Environment variables to pass to the agent")
+	flags.StringToStringVarP(&c.Sources, "submission.source", "u", nil, "Source urls to pass to the agent")
+	flags.StringToStringVar(&c.Secrets, "submission.secret", nil, "Secrets to pass to the agent")
+	flags.StringVar(&c.ManifestPath, "submission.manifest", "", "Path to manifest file.")
+}
+
+func (c *SubmissionConfig) Submission() (*Submission, error) {
+	if c.Image == "" && c.ManifestPath == "" {
+		return nil, fmt.Errorf("either image or manifest path must be provided")
+	}
+	// Decode manifestPath
+	var manifest Manifest
+	if c.ManifestPath != "" {
+		f, err := os.Open(c.ManifestPath)
+		if err != nil {
+			return nil, fmt.Errorf("failed to open manifest: %w", err)
+		}
+		defer f.Close()
+		if err := yaml.NewDecoder(f).Decode(&manifest); err != nil {
+			return nil, fmt.Errorf("failed to decode manifest: %w", err)
+		}
+	}
+
+	if c.Image != "" {
+		manifest.Image = c.Image
+	}
+	if c.Mode != "" {
+		manifest.Mode = Mode(c.Mode)
+	}
+	if c.Difficulty != "" {
+		manifest.Difficulty = c.Difficulty
+	}
+	if manifest.Image == "" {
+		return nil, fmt.Errorf("image is required")
+	}
+
+	if c.EnvVars != nil {
+		manifest.Env = make(map[string]string)
+	}
+	for k, v := range c.EnvVars {
+		manifest.Env[k] = v
+	}
+
+	if c.Sources != nil {
+		manifest.Sources = make(map[string]string)
+	}
+	for k, v := range c.Sources {
+		manifest.Sources[k] = v
+	}
+
+	return &Submission{
+		Manifest: manifest,
+		Secrets:  c.Secrets,
+	}, nil
 }
