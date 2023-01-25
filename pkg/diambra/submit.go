@@ -57,7 +57,7 @@ func readCredentials(homedir string) (string, error) {
 	return string(b), nil
 }
 
-func Submit(logger log.Logger, image string, mode Mode, homedir string, envVars, sources, secrets map[string]string, manifestPath string) (int, error) {
+func Submit(logger log.Logger, image string, mode Mode, difficulty, homedir string, envVars, sources, secrets map[string]string, manifestPath string) (int, error) {
 	apiURL := os.Getenv("DIAMBRA_API_URL")
 	if apiURL == "" {
 		apiURL = API
@@ -80,6 +80,9 @@ func Submit(logger log.Logger, image string, mode Mode, homedir string, envVars,
 	}
 	if mode != "" {
 		manifest.Mode = mode
+	}
+	if difficulty != "" {
+		manifest.Difficulty = difficulty
 	}
 	if manifest.Image == "" {
 		return 0, fmt.Errorf("image is required")

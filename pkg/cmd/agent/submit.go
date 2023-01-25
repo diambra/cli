@@ -28,6 +28,7 @@ import (
 func NewSubmitCmd(logger *log.Logger) *cobra.Command {
 	var (
 		mode         string
+		difficulty   string
 		envVars      map[string]string
 		sources      map[string]string
 		secrets      map[string]string
@@ -51,7 +52,7 @@ func NewSubmitCmd(logger *log.Logger) *cobra.Command {
 				level.Error(logger).Log("msg", "either image or manifest path must be provided")
 				os.Exit(1)
 			}
-			id, err := diambra.Submit(logger, image, diambra.Mode(mode), c.Home, envVars, sources, secrets, manifestPath)
+			id, err := diambra.Submit(logger, image, diambra.Mode(mode), difficulty, c.Home, envVars, sources, secrets, manifestPath)
 			if err != nil {
 				level.Error(logger).Log("msg", "failed to submit agent", "err", err.Error())
 				os.Exit(1)
@@ -60,6 +61,7 @@ func NewSubmitCmd(logger *log.Logger) *cobra.Command {
 		},
 	}
 	cmd.Flags().StringVar(&mode, "mode", string(diambra.ModeAIvsCOM), "Mode to use for evaluation")
+	cmd.Flags().StringVar(&difficulty, "difficulty", "easy", "Difficulty to use for evaluation")
 	cmd.Flags().StringToStringVarP(&envVars, "env", "e", envVars, "Environment variables to pass to the agent")
 	cmd.Flags().StringToStringVarP(&sources, "source", "u", sources, "Source urls to pass to the agent")
 	cmd.Flags().StringToStringVarP(&secrets, "secret", "s", secrets, "Secrets to pass to the agent")
