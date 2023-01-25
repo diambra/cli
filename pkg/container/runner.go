@@ -94,6 +94,7 @@ type Container struct {
 	BindMounts       []*BindMount
 	PortMapping      *PortMapping
 	Hostname         string
+	WorkingDir       string
 }
 
 type ContainerStatus struct {
@@ -109,5 +110,5 @@ type Runner interface {
 	Stop(id string) error
 	StopAll() error
 	Attach(id string) (io.WriteCloser, io.ReadCloser, error)
-	Wait(id string) error
+	Wait(id string) (int, error)
 }

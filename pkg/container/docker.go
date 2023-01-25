@@ -83,6 +83,7 @@ func (r *DockerRunner) Start(c *Container) (*ContainerStatus, error) {
 				"diambra": "env",
 			},
 			StopSignal: "SIGKILL", // FIXME: Make diambraApp handle SIGTERM insteads
+			WorkingDir: c.WorkingDir,
 		}
 		hostConfig = &container.HostConfig{
 			AutoRemove:  r.AutoRemove,
@@ -185,7 +186,7 @@ func (r *DockerRunner) Attach(id string) (io.WriteCloser, io.ReadCloser, error) 
 		Stdin:  true,
 		Stdout: true,
 		Stderr: true,
-		Logs:   false, // FIXME?
+		Logs:   true,
 	})
 	if err != nil {
 		return nil, nil, err
@@ -194,17 +195,26 @@ func (r *DockerRunner) Attach(id string) (io.WriteCloser, io.ReadCloser, error) 
 	return resp.Conn, &HijackedResponseReader{log.With(r.Logger, "in", "HijackedResponseReader"), resp}, nil
 }
 
-func (r *DockerRunner) Wait(id string) error {
+func (r *DockerRunner) Wait(id string) (int, error) {
 	ctx := context.TODO()
 	statusCh, errCh := r.Client.ContainerWait(ctx, id, container.WaitConditionNotRunning)
+
+	var (
+		err        error
+		statusCode int
+	)
 	select {
-	case err := <-errCh:
-		if err != nil {
-			return err
+	case e := <-errCh:
+		level.Debug(r.Logger).Log("msg", "got error from errCh", "err", err)
+		if e != nil {
+			err = e
 		}
-	case <-statusCh:
+	case status := <-statusCh:
+		level.Debug(r.Logger).Log("msg", "got status from statusCh", "status", status)
+		statusCode = int(status.StatusCode)
 	}
-	return nil
+	level.Debug(r.Logger).Log("msg", "done waiting", "err", err, "statusCode", statusCode)
+	return statusCode, err
 }
 
 func (r *DockerRunner) StopAll() error {

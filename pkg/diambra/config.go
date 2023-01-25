@@ -94,6 +94,8 @@ type EnvConfig struct {
 	mounts   []string
 
 	PreallocatePort bool
+
+	InitImage string
 }
 
 func NewConfig(logger log.Logger) (*EnvConfig, error) {
@@ -161,6 +163,9 @@ func (c *EnvConfig) AddFlags(flags *pflag.FlagSet) {
 
 	// Agent flags
 	flags.StringVarP(&c.AgentImage, "agent.image", "a", "", "Run given agent command in container")
+
+	// Other flags
+	flags.StringVar(&c.InitImage, "init.image", "ghcr.io/diambra/init:main", "Init image to use")
 }
 
 func (c *EnvConfig) Validate() error {
@@ -250,8 +255,6 @@ func NewSubmissionConfig(logger log.Logger) *SubmissionConfig {
 }
 
 func (c *SubmissionConfig) AddFlags(flags *pflag.FlagSet) {
-	level.Debug(c.logger).Log("msg", "Adding submission flags")
-
 	flags.StringVar(&c.Mode, "submission.mode", string(ModeAIvsCOM), "Mode to use for evaluation")
 	flags.StringVar(&c.Difficulty, "submission.difficulty", string(DifficultyEasy), "Difficulty to use for evaluation")
 	flags.StringToStringVarP(&c.EnvVars, "submission.env", "e", nil, "Environment variables to pass to the agent")
