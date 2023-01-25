@@ -13,6 +13,7 @@ while True:
 
     if done:
         observation = env.reset()
-        break
+        if info["env_done"]:
+            break
 
 env.close()
