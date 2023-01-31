@@ -7,7 +7,6 @@ import (
 	"io"
 	"net/http"
 	"os"
-	"path/filepath"
 
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
@@ -43,20 +42,19 @@ type submitResponse struct {
 	ID int `json:"id"`
 }
 
-func readCredentials(homedir string) (string, error) {
+func readCredentials(credPath string) (string, error) {
 	creds := os.Getenv("DIAMBRA_TOKEN")
 	if creds != "" {
 		return creds, nil
 	}
-	credFile := filepath.Join(homedir, ".diambra", "credentials")
-	b, err := os.ReadFile(filepath.Join(credFile))
+	b, err := os.ReadFile(credPath)
 	if err != nil {
 		return "", err
 	}
 	return string(b), nil
 }
 
-func Submit(logger log.Logger, homedir string, submission *Submission) (int, error) {
+func Submit(logger log.Logger, credPath string, submission *Submission) (int, error) {
 	apiURL := os.Getenv("DIAMBRA_API_URL")
 	if apiURL == "" {
 		apiURL = API
@@ -67,7 +65,7 @@ func Submit(logger log.Logger, homedir string, submission *Submission) (int, err
 	if err != nil {
 		return 0, err
 	}
-	creds, err := readCredentials(homedir)
+	creds, err := readCredentials(credPath)
 	if err != nil {
 		return 0, err
 	}

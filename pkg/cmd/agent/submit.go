@@ -61,7 +61,7 @@ func NewSubmitCmd(logger *log.Logger) *cobra.Command {
 				fmt.Println(string(b))
 				return
 			}
-			id, err := diambra.Submit(logger, c.Home, submission)
+			id, err := diambra.Submit(logger, c.CredPath, submission)
 			if err != nil {
 				level.Error(logger).Log("msg", "failed to submit agent", "err", err.Error())
 				os.Exit(1)
