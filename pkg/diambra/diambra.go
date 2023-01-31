@@ -169,7 +169,7 @@ func (d *Diambra) start(envId int, first bool) error {
 		}
 
 		done := false
-		d.copyLogs(done, wc, os.Stdin, os.Stdout, rc)
+		d.copyLogs(&done, wc, os.Stdin, os.Stdout, rc)
 
 		level.Debug(d.Logger).Log("msg", "waiting for grpc")
 		if err := d.waitForGRPC(env.Address); err != nil {
@@ -196,10 +196,10 @@ func (d *Diambra) start(envId int, first bool) error {
 	return nil
 }
 
-func (d *Diambra) copyLogs(done bool, wc io.WriteCloser, in io.Reader, out io.Writer, rc io.ReadCloser) {
+func (d *Diambra) copyLogs(done *bool, wc io.WriteCloser, in io.Reader, out io.Writer, rc io.ReadCloser) {
 	go func() {
 		if _, err := io.Copy(wc, os.Stdin); err != nil {
-			if done {
+			if *done {
 				return
 			}
 			level.Error(d.Logger).Log("msg", "error copying stdin to container stdin", "err", err.Error())
@@ -207,7 +207,7 @@ func (d *Diambra) copyLogs(done bool, wc io.WriteCloser, in io.Reader, out io.Wr
 	}()
 	go func() {
 		if _, err := io.Copy(os.Stdout, rc); err != nil {
-			if done {
+			if *done {
 				return
 			}
 			level.Error(d.Logger).Log("msg", "error copying container stdout to stdout", "err", err.Error())
@@ -326,7 +326,7 @@ func (e *Diambra) RunAgentContainer(c *container.Container) (int, error) {
 	}
 
 	done := false
-	e.copyLogs(done, wc, os.Stdin, os.Stdout, rc)
+	e.copyLogs(&done, wc, os.Stdin, os.Stdout, rc)
 
 	level.Debug(e.Logger).Log("msg", "waiting for container to exit")
 	statusCode, err := e.Runner.Wait(cs.ID)
