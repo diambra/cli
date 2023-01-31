@@ -1,4 +1,4 @@
-package diambra
+package client
 
 import (
 	"bytes"
@@ -6,13 +6,9 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"os"
 
-	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 )
-
-// FIXME: Replace this with oapi generated code
 
 // Mode Enum
 type Mode string
@@ -42,45 +38,13 @@ type submitResponse struct {
 	ID int `json:"id"`
 }
 
-func readCredentials(credPath string) (string, error) {
-	creds := os.Getenv("DIAMBRA_TOKEN")
-	if creds != "" {
-		return creds, nil
-	}
-	b, err := os.ReadFile(credPath)
-	if err != nil {
-		return "", err
-	}
-	return string(b), nil
-}
-
-func Submit(logger log.Logger, credPath string, submission *Submission) (int, error) {
-	apiURL := os.Getenv("DIAMBRA_API_URL")
-	if apiURL == "" {
-		apiURL = API
-	}
-	logger = log.With(logger, "api", apiURL)
-
+func (c *Client) Submit(submission *Submission) (int, error) {
 	data, err := json.Marshal(submission)
 	if err != nil {
 		return 0, err
 	}
-	creds, err := readCredentials(credPath)
-	if err != nil {
-		return 0, err
-	}
-	level.Debug(logger).Log("msg", "Submitting", "data", string(data))
-	req, err := http.NewRequest(
-		"POST",
-		apiURL+"/submit",
-		bytes.NewBuffer(data),
-	)
-	if err != nil {
-		return 0, err
-	}
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Authorization", "Token "+creds)
-	resp, err := http.DefaultClient.Do(req)
+	level.Debug(c.logger).Log("msg", "Submitting", "data", string(data))
+	resp, err := c.Request("POST", "submit", bytes.NewBuffer(data), true)
 	if err != nil {
 		return 0, err
 	}

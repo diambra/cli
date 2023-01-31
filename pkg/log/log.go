@@ -45,7 +45,7 @@ func (l *Logger) SetOptions(debug bool, logFormat string) error {
 	if !debug {
 		l.Logger = level.NewFilter(l.Logger, level.AllowInfo())
 	}
-	l.Logger = log.With(l.Logger, "caller", log.Caller(5))
+	l.Logger = log.With(l.Logger, "caller", log.Caller(4))
 	l.Logger = log.With(l.Logger, "source", "cli")
 
 	return nil

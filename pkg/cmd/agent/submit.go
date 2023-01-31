@@ -18,8 +18,10 @@ package agent
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 
 	"github.com/diambra/cli/pkg/diambra"
+	"github.com/diambra/cli/pkg/diambra/client"
 	"github.com/diambra/cli/pkg/log"
 	"github.com/go-kit/log/level"
 	"github.com/spf13/cobra"
@@ -47,6 +49,11 @@ func NewSubmitCmd(logger *log.Logger) *cobra.Command {
 				level.Error(logger).Log("msg", "either image or manifest path must be provided")
 				os.Exit(1)
 			}
+			if err := diambra.EnsureCredentials(logger, c.CredPath); err != nil {
+				level.Error(logger).Log("msg", err.Error())
+				os.Exit(1)
+			}
+
 			submission, err := submissionConfig.Submission()
 			if err != nil {
 				level.Error(logger).Log("msg", "failed to configure manifest", "err", err.Error())
@@ -61,7 +68,12 @@ func NewSubmitCmd(logger *log.Logger) *cobra.Command {
 				fmt.Println(string(b))
 				return
 			}
-			id, err := diambra.Submit(logger, c.CredPath, submission)
+			cl, err := client.NewClient(logger, c.CredPath)
+			if err != nil {
+				level.Error(logger).Log("msg", "failed to create client", "err", err.Error())
+				os.Exit(1)
+			}
+			id, err := cl.Submit(submission)
 			if err != nil {
 				level.Error(logger).Log("msg", "failed to submit agent", "err", err.Error())
 				os.Exit(1)
@@ -70,6 +82,8 @@ func NewSubmitCmd(logger *log.Logger) *cobra.Command {
 		},
 	}
 	submissionConfig.AddFlags(cmd.Flags())
+	// FIXME: Split this out of EnvConfig
+	cmd.Flags().StringVar(&c.CredPath, "path.credentials", filepath.Join(c.Home, ".diambra/credentials"), "Path to credentials file")
 	cmd.Flags().BoolVar(&dump, "dump", false, "Dump the manifest to stdout instead of submitting")
 	return cmd
 }

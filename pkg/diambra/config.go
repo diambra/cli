@@ -25,6 +25,7 @@ import (
 	"strings"
 
 	"github.com/diambra/cli/pkg/container"
+	"github.com/diambra/cli/pkg/diambra/client"
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	"github.com/spf13/pflag"
@@ -176,21 +177,11 @@ func (c *EnvConfig) Validate() error {
 	if !isDir {
 		return fmt.Errorf("path.roms %s is not a directory. Is --path.roms set correctly?", c.RomsPath)
 	}
-	exists, isDir = pathExistsAndIsDir(c.CredPath)
-	if exists && isDir {
-		return fmt.Errorf("path.credentials %s is a directory. Is --path.credentials set correctly?", c.CredPath)
+
+	if err := EnsureCredentials(c.logger, c.CredPath); err != nil {
+		return err
 	}
-	if !exists {
-		bp := filepath.Dir(c.CredPath)
-		if err := os.MkdirAll(bp, 0755); err != nil {
-			return fmt.Errorf("can't create %s: %w", bp, err)
-		}
-		fh, err := os.OpenFile(c.CredPath, os.O_RDONLY|os.O_CREATE, 0600)
-		if err != nil {
-			return fmt.Errorf("can't create credentials file %s: %w", c.CredPath, err)
-		}
-		fh.Close()
-	}
+
 	if c.Image == "" {
 		tag := DefaultEnvImageTag
 		parts, err := GetInstalledDiambraArenaVersion()
@@ -255,7 +246,7 @@ func NewSubmissionConfig(logger log.Logger) *SubmissionConfig {
 }
 
 func (c *SubmissionConfig) AddFlags(flags *pflag.FlagSet) {
-	flags.StringVar(&c.Mode, "submission.mode", string(ModeAIvsCOM), "Mode to use for evaluation")
+	flags.StringVar(&c.Mode, "submission.mode", string(client.ModeAIvsCOM), "Mode to use for evaluation")
 	flags.StringVar(&c.Difficulty, "submission.difficulty", string(DifficultyEasy), "Difficulty to use for evaluation")
 	flags.StringToStringVarP(&c.EnvVars, "submission.env", "e", nil, "Environment variables to pass to the agent")
 	flags.StringToStringVarP(&c.Sources, "submission.source", "u", nil, "Source urls to pass to the agent")
@@ -263,12 +254,12 @@ func (c *SubmissionConfig) AddFlags(flags *pflag.FlagSet) {
 	flags.StringVar(&c.ManifestPath, "submission.manifest", "", "Path to manifest file.")
 }
 
-func (c *SubmissionConfig) Submission() (*Submission, error) {
+func (c *SubmissionConfig) Submission() (*client.Submission, error) {
 	if c.Image == "" && c.ManifestPath == "" {
 		return nil, fmt.Errorf("either image or manifest path must be provided")
 	}
 	// Decode manifestPath
-	var manifest Manifest
+	var manifest client.Manifest
 	if c.ManifestPath != "" {
 		f, err := os.Open(c.ManifestPath)
 		if err != nil {
@@ -284,7 +275,7 @@ func (c *SubmissionConfig) Submission() (*Submission, error) {
 		manifest.Image = c.Image
 	}
 	if c.Mode != "" {
-		manifest.Mode = Mode(c.Mode)
+		manifest.Mode = client.Mode(c.Mode)
 	}
 	if c.Difficulty != "" {
 		manifest.Difficulty = c.Difficulty
@@ -307,7 +298,7 @@ func (c *SubmissionConfig) Submission() (*Submission, error) {
 		manifest.Sources[k] = v
 	}
 
-	return &Submission{
+	return &client.Submission{
 		Manifest: manifest,
 		Secrets:  c.Secrets,
 	}, nil

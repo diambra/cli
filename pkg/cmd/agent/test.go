@@ -8,8 +8,9 @@ import (
 	"github.com/containerd/console"
 	"github.com/diambra/cli/pkg/container"
 	"github.com/diambra/cli/pkg/diambra"
+	"github.com/diambra/cli/pkg/diambra/client"
 	"github.com/diambra/cli/pkg/log"
-	"github.com/docker/docker/client"
+	dclient "github.com/docker/docker/client"
 	"github.com/go-kit/log/level"
 	"github.com/spf13/cobra"
 )
@@ -53,10 +54,10 @@ func NewTestCmd(logger *log.Logger) *cobra.Command {
 	return cmd
 }
 
-func TestFn(logger *log.Logger, c *diambra.EnvConfig, submission *diambra.Submission) error {
+func TestFn(logger *log.Logger, c *diambra.EnvConfig, submission *client.Submission) error {
 	level.Debug(logger).Log("config", fmt.Sprintf("%#v", c))
 
-	client, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
+	client, err := dclient.NewClientWithOpts(dclient.FromEnv, dclient.WithAPIVersionNegotiation())
 	if err != nil {
 		return err
 	}
