@@ -45,6 +45,7 @@ func NewInitCmd(logger *log.Logger) *cobra.Command {
 		Args: cobra.ExactArgs(1),
 	}
 	cmd.Flags().StringVar(&config.Python.Version, "python.version", config.Python.Version, "Python version to use")
+	cmd.Flags().BoolVar(&config.Secret, "secret", config.Secret, "Include secret in agent")
 
 	return cmd
 }

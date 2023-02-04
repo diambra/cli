@@ -7,3 +7,8 @@ RUN apt-get -qy update && \
 WORKDIR /app
 COPY requirements.txt .
 RUN pip install -r requirements.txt
+
+{{ if not .Secret }}
+COPY . .
+ENTRYPOINT [ "python", "/app/agent.py" ]
+{{ end }}
