@@ -38,7 +38,7 @@ func NewSubmitCmd(logger *log.Logger) *cobra.Command {
 	}
 
 	cmd := &cobra.Command{
-		Use:   "submit [--manifest submission-manifest.yaml | docker-image]",
+		Use:   "submit [--submission.manifest submission-manifest.yaml | docker-image]",
 		Short: "Submits an agent for evaluation",
 		Long:  `This takes a docker image or submission manifest and submits it for evaluation.`,
 		Args:  cobra.MaximumNArgs(1),
