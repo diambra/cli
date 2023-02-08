@@ -95,6 +95,7 @@ type Container struct {
 	PortMapping      *PortMapping
 	Hostname         string
 	WorkingDir       string
+	IPCMode          string
 }
 
 type ContainerStatus struct {

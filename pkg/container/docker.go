@@ -88,6 +88,7 @@ func (r *DockerRunner) Start(c *Container) (*ContainerStatus, error) {
 		hostConfig = &container.HostConfig{
 			AutoRemove:  r.AutoRemove,
 			SecurityOpt: c.SecurityOpt,
+			IpcMode:     container.IpcMode(c.IPCMode),
 		}
 	)
 	hostConfig.Mounts = make([]mount.Mount, len(c.BindMounts))

@@ -22,7 +22,6 @@ import (
 	"math/big"
 	"net"
 	"os"
-	"path/filepath"
 	"runtime"
 	"strings"
 	"time"
@@ -259,16 +258,7 @@ func newEnvContainer(config *EnvConfig, envID, randomSeed int) (*container.Conta
 	c.BindMounts = append(c.BindMounts, config.Mounts...)
 
 	if config.AppArgs.Render {
-		xauthority := filepath.Join(config.Home, ".Xauthority")
-		if xap := os.Getenv("XAUTHORITY"); xap != "" {
-			xauthority = xap
-		}
-		c.BindMounts = append(c.BindMounts,
-			container.NewBindMount("/tmp/.X11-unix", "/tmp/.X11-unix"),
-			container.NewBindMount(xauthority, "/tmp/.Xauthority"),
-		)
-		c.Hostname = config.Hostname
-		c.Env = append(c.Env, "DISPLAY="+os.Getenv("DISPLAY"))
+		configureRender(config, c)
 	}
 	if config.SeccompProfile != "" {
 		c.SecurityOpt = []string{"seccomp=" + config.SeccompProfile}
