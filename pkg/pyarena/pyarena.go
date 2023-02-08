@@ -26,8 +26,8 @@ var CheckRoms string
 //go:embed list_roms.py
 var ListRoms string
 
-//go:embed get_diambra_arena_version.py
-var GetDiambraArenaVersion string
+//go:embed get_diambra_engine_version.py
+var GetDiambraEngineVersion string
 
 func FindPython() string {
 	for _, name := range []string{

@@ -15,7 +15,7 @@ const DiambraArenaPyPiJSONURL = "https://pypi.org/pypi/diambra-arena/json"
 
 // Use pyarena script find diambra-arena version and use that as tag for the env image returned
 func GetInstalledDiambraArenaVersion() ([]string, error) {
-	cmd := exec.Command(pyarena.FindPython(), "-c", pyarena.GetDiambraArenaVersion)
+	cmd := exec.Command(pyarena.FindPython(), "-c", pyarena.GetDiambraEngineVersion)
 	stdout := &bytes.Buffer{}
 
 	cmd.Stdout = stdout

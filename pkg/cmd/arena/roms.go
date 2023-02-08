@@ -63,6 +63,6 @@ func NewRomCmds(logger *log.Logger) ([]*cobra.Command, error) {
 	return []*cobra.Command{
 		NewScriptCmd(logger, "check roms", pyarena.CheckRoms, c),
 		NewScriptCmd(logger, "list roms", pyarena.ListRoms, c),
-		NewScriptCmd(logger, "version", pyarena.GetDiambraArenaVersion, c),
+		NewScriptCmd(logger, "version", pyarena.GetDiambraEngineVersion, c),
 	}, nil
 }
