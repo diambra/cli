@@ -258,7 +258,9 @@ func newEnvContainer(config *EnvConfig, envID, randomSeed int) (*container.Conta
 	c.BindMounts = append(c.BindMounts, config.Mounts...)
 
 	if config.AppArgs.Render {
-		configureRender(config, c)
+		if err := configureRender(config, c); err != nil {
+			return nil, fmt.Errorf("error configuring render: %w", err)
+		}
 	}
 	if config.SeccompProfile != "" {
 		c.SecurityOpt = []string{"seccomp=" + config.SeccompProfile}
