@@ -38,12 +38,7 @@ func NewTestCmd(logger *log.Logger) *cobra.Command {
 				nargs    = len(args)
 				manifest *client.Manifest
 			)
-			if nargs > 0 {
-				submissionConfig.Image = args[0]
-			}
-			if nargs > 1 {
-				submissionConfig.Command = args[1:]
-			}
+
 			switch {
 			case submissionConfig.SubmissionID != 0:
 				cl, err := client.NewClient(logger, c.CredPath)
@@ -64,9 +59,19 @@ func NewTestCmd(logger *log.Logger) *cobra.Command {
 					os.Exit(1)
 				}
 			default:
-				if submissionConfig.Image == "" {
+				if nargs == 0 {
 					level.Error(logger).Log("msg", "either image, manifest path or submission id must be provided")
 					os.Exit(1)
+				}
+			}
+
+			// If we have a manifest, args are commands, otherwise args are image and commands
+			if manifest != nil {
+				submissionConfig.Command = args
+			} else {
+				submissionConfig.Image = args[0]
+				if nargs > 1 {
+					submissionConfig.Command = args[1:]
 				}
 			}
 			submission, err := submissionConfig.Submission(manifest)
@@ -75,10 +80,9 @@ func NewTestCmd(logger *log.Logger) *cobra.Command {
 				os.Exit(1)
 			}
 			if err := TestFn(logger, c, submission); err != nil {
-				level.Error(logger).Log("msg", "failed to run agent", "err", err.Error())
+				level.Error(logger).Log("msg", "failed to run agent", "err", err.Error(), "manifest", fmt.Sprintf("%#v", submission.Manifest))
 				os.Exit(1)
 			}
-
 		},
 	}
 	c.AddFlags(cmd.Flags())
@@ -87,7 +91,7 @@ func NewTestCmd(logger *log.Logger) *cobra.Command {
 }
 
 func TestFn(logger *log.Logger, c *diambra.EnvConfig, submission *client.Submission) error {
-	level.Debug(logger).Log("config", fmt.Sprintf("%#v", c))
+	level.Debug(logger).Log("manifest", fmt.Sprintf("%#v", submission.Manifest), "config", fmt.Sprintf("%#v", c))
 
 	client, err := dclient.NewClientWithOpts(dclient.FromEnv, dclient.WithAPIVersionNegotiation())
 	if err != nil {
@@ -101,7 +105,11 @@ func TestFn(logger *log.Logger, c *diambra.EnvConfig, submission *client.Submiss
 	if err != nil {
 		return fmt.Errorf("couldn't create DIAMBRA Env: %w", err)
 	}
-
+	defer func() {
+		if err := d.Cleanup(); err != nil {
+			level.Error(logger).Log("msg", "Couldn't cleanup DIAMBRA Env", "err", err.Error())
+		}
+	}()
 	level.Debug(logger).Log("msg", "starting DIAMBRA env")
 	if err := d.Start(); err != nil {
 		return fmt.Errorf("could't start DIAMBRA Env: %w", err)

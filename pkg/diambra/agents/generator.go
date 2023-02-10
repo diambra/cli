@@ -63,7 +63,7 @@ func NewConfig(logger log.Logger) (*Config, error) {
 			return nil, err
 		}
 	}
-	level.Debug(logger).Log("msg", "using diambra-arena version", "version", strings.Join(parts, "."))
+	level.Debug(logger).Log("msg", "using diambra-engine version", "version", strings.Join(parts, "."))
 	return &Config{
 		Arena: ArenaConfig{
 			Version: strings.Join(parts, "."),
