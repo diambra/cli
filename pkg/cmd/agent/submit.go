@@ -43,6 +43,7 @@ func NewSubmitCmd(logger *log.Logger) *cobra.Command {
 		Long:  `This takes a docker image or submission manifest and submits it for evaluation.`,
 		Args:  cobra.MaximumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
+			var manifest *client.Manifest
 			if len(args) > 0 {
 				submissionConfig.Image = args[0]
 			} else if submissionConfig.ManifestPath == "" {
@@ -53,8 +54,10 @@ func NewSubmitCmd(logger *log.Logger) *cobra.Command {
 				level.Error(logger).Log("msg", err.Error())
 				os.Exit(1)
 			}
-
-			submission, err := submissionConfig.Submission()
+			if submissionConfig.ManifestPath != "" {
+				manifest, err = client.ManifestFromPath(submissionConfig.ManifestPath)
+			}
+			submission, err := submissionConfig.Submission(manifest)
 			if err != nil {
 				level.Error(logger).Log("msg", "failed to configure manifest", "err", err.Error())
 				os.Exit(1)

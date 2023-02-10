@@ -6,8 +6,10 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"os"
 
 	"github.com/go-kit/log/level"
+	"gopkg.in/yaml.v2"
 )
 
 // Mode Enum
@@ -61,4 +63,34 @@ func (c *Client) Submit(submission *Submission) (int, error) {
 		return 0, err
 	}
 	return s.ID, nil
+}
+
+func (c *Client) Submission(id int) (*Submission, error) {
+	resp, err := c.Request("GET", fmt.Sprintf("submissions/%d", id), nil, true)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		errResp, err := io.ReadAll(resp.Body)
+		if err != nil {
+			errResp = []byte(fmt.Sprintf("failed to read error response: %s", err))
+		}
+		return nil, fmt.Errorf("failed to get submission: %s: %s", resp.Status, errResp)
+	}
+	var s Submission
+	if err := json.NewDecoder(resp.Body).Decode(&s); err != nil {
+		return nil, err
+	}
+	return &s, nil
+}
+
+func ManifestFromPath(path string) (*Manifest, error) {
+	manifest := &Manifest{}
+	f, err := os.Open(path)
+	if err != nil {
+		return nil, fmt.Errorf("failed to open manifest: %w", err)
+	}
+	defer f.Close()
+	return manifest, yaml.NewDecoder(f).Decode(manifest)
 }

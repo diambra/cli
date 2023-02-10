@@ -54,7 +54,7 @@ func (c *Client) Request(method string, path string, body io.Reader, authenticat
 	if err != nil {
 		return nil, err
 	}
-	level.Debug(c.logger).Log("msg", "Request", "method", method, "path", path, "body", body, "authenticated", authenticated, "apiURL", apiURL)
+	level.Debug(c.logger).Log("msg", "Request", "method", method, "url", surl, "authenticated", authenticated)
 
 	req, err := http.NewRequest(
 		method,

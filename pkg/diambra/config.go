@@ -29,7 +29,6 @@ import (
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	"github.com/spf13/pflag"
-	"gopkg.in/yaml.v2"
 )
 
 const (
@@ -238,6 +237,7 @@ type SubmissionConfig struct {
 	Secrets      map[string]string
 	Command      []string
 	ManifestPath string
+	SubmissionID int
 }
 
 func NewSubmissionConfig(logger log.Logger) *SubmissionConfig {
@@ -253,25 +253,13 @@ func (c *SubmissionConfig) AddFlags(flags *pflag.FlagSet) {
 	flags.StringToStringVarP(&c.Sources, "submission.source", "u", nil, "Source urls to pass to the agent")
 	flags.StringToStringVar(&c.Secrets, "submission.secret", nil, "Secrets to pass to the agent")
 	flags.StringVar(&c.ManifestPath, "submission.manifest", "", "Path to manifest file.")
+	flags.IntVar(&c.SubmissionID, "submission.id", 0, "Submission ID to retrieve manifest from")
 }
 
-func (c *SubmissionConfig) Submission() (*client.Submission, error) {
-	if c.Image == "" && c.ManifestPath == "" {
-		return nil, fmt.Errorf("either image or manifest path must be provided")
+func (c *SubmissionConfig) Submission(manifest *client.Manifest) (*client.Submission, error) {
+	if manifest == nil {
+		manifest = &client.Manifest{}
 	}
-	// Decode manifestPath
-	var manifest client.Manifest
-	if c.ManifestPath != "" {
-		f, err := os.Open(c.ManifestPath)
-		if err != nil {
-			return nil, fmt.Errorf("failed to open manifest: %w", err)
-		}
-		defer f.Close()
-		if err := yaml.NewDecoder(f).Decode(&manifest); err != nil {
-			return nil, fmt.Errorf("failed to decode manifest: %w", err)
-		}
-	}
-
 	if c.Image != "" {
 		manifest.Image = c.Image
 	}
@@ -304,7 +292,7 @@ func (c *SubmissionConfig) Submission() (*client.Submission, error) {
 	}
 
 	return &client.Submission{
-		Manifest: manifest,
+		Manifest: *manifest,
 		Secrets:  c.Secrets,
 	}, nil
 }

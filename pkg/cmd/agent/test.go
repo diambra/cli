@@ -34,14 +34,42 @@ func NewTestCmd(logger *log.Logger) *cobra.Command {
 		to DIAMBRA. This is useful for testing your agent before submitting it. Optionally, you can pass in commands to run instead of the configured entrypoint.`,
 		Args: cobra.MaximumNArgs(2),
 		Run: func(cmd *cobra.Command, args []string) {
-			nargs := len(args)
+			var (
+				nargs    = len(args)
+				manifest *client.Manifest
+			)
 			if nargs > 0 {
 				submissionConfig.Image = args[0]
 			}
 			if nargs > 1 {
 				submissionConfig.Command = args[1:]
 			}
-			submission, err := submissionConfig.Submission()
+			switch {
+			case submissionConfig.SubmissionID != 0:
+				cl, err := client.NewClient(logger, c.CredPath)
+				if err != nil {
+					level.Error(logger).Log("msg", "failed to create client", "err", err.Error())
+					os.Exit(1)
+				}
+				s, err := cl.Submission(submissionConfig.SubmissionID)
+				if err != nil {
+					level.Error(logger).Log("msg", "failed to get submission", "err", err.Error())
+					os.Exit(1)
+				}
+				manifest = &s.Manifest
+			case submissionConfig.ManifestPath != "":
+				manifest, err = client.ManifestFromPath(submissionConfig.ManifestPath)
+				if err != nil {
+					level.Error(logger).Log("msg", "failed to read manifest", "err", err.Error())
+					os.Exit(1)
+				}
+			default:
+				if submissionConfig.Image == "" {
+					level.Error(logger).Log("msg", "either image, manifest path or submission id must be provided")
+					os.Exit(1)
+				}
+			}
+			submission, err := submissionConfig.Submission(manifest)
 			if err != nil {
 				level.Error(logger).Log("msg", "failed to configure manifest", "err", err.Error())
 				os.Exit(1)
