@@ -236,6 +236,7 @@ type SubmissionConfig struct {
 	EnvVars      map[string]string
 	Sources      map[string]string
 	Secrets      map[string]string
+	Command      []string
 	ManifestPath string
 }
 
@@ -286,16 +287,20 @@ func (c *SubmissionConfig) Submission() (*client.Submission, error) {
 
 	if c.EnvVars != nil {
 		manifest.Env = make(map[string]string)
-	}
-	for k, v := range c.EnvVars {
-		manifest.Env[k] = v
+		for k, v := range c.EnvVars {
+			manifest.Env[k] = v
+		}
 	}
 
 	if c.Sources != nil {
 		manifest.Sources = make(map[string]string)
+		for k, v := range c.Sources {
+			manifest.Sources[k] = v
+		}
 	}
-	for k, v := range c.Sources {
-		manifest.Sources[k] = v
+
+	if c.Command != nil {
+		manifest.Command = c.Command
 	}
 
 	return &client.Submission{

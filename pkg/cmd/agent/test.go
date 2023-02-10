@@ -28,14 +28,18 @@ func NewTestCmd(logger *log.Logger) *cobra.Command {
 	}
 
 	cmd := &cobra.Command{
-		Use:   "test [--submission.manifest submission-manifest.yaml | docker-image]",
+		Use:   "test [--submission.manifest submission-manifest.yaml | docker-image] [commands ...]",
 		Short: "Run an agent from image or manifest similar to how it would be evaluated",
 		Long: `This takes a docker image or submission manifest and runs it in the same way as it would be run when submitted
-		to DIAMBRA. This is useful for testing your agent before submitting it.`,
-		Args: cobra.MaximumNArgs(1),
+		to DIAMBRA. This is useful for testing your agent before submitting it. Optionally, you can pass in commands to run instead of the configured entrypoint.`,
+		Args: cobra.MaximumNArgs(2),
 		Run: func(cmd *cobra.Command, args []string) {
-			if len(args) > 0 {
+			nargs := len(args)
+			if nargs > 0 {
 				submissionConfig.Image = args[0]
+			}
+			if nargs > 1 {
+				submissionConfig.Command = args[1:]
 			}
 			submission, err := submissionConfig.Submission()
 			if err != nil {
