@@ -26,6 +26,7 @@ import (
 
 	"github.com/diambra/cli/pkg/container"
 	"github.com/diambra/cli/pkg/diambra/client"
+	"github.com/diambra/init/initializer"
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	"github.com/spf13/pflag"
@@ -281,6 +282,7 @@ func (c *SubmissionConfig) Submission(manifest *client.Manifest) (*client.Submis
 	}
 
 	if c.Sources != nil {
+		level.Debug(c.logger).Log("msg", "Using sources", "sources", c.Sources)
 		manifest.Sources = make(map[string]string)
 		for k, v := range c.Sources {
 			manifest.Sources[k] = v
@@ -289,6 +291,17 @@ func (c *SubmissionConfig) Submission(manifest *client.Manifest) (*client.Submis
 
 	if c.Command != nil {
 		manifest.Command = c.Command
+	}
+
+	if manifest.Sources != nil {
+		init, err := initializer.NewInitializer(manifest.Sources, c.Secrets)
+		if err != nil {
+			return nil, err
+		}
+
+		if err := init.Validate(); err != nil {
+			return nil, err
+		}
 	}
 
 	return &client.Submission{

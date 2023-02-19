@@ -67,7 +67,9 @@ func NewTestCmd(logger *log.Logger) *cobra.Command {
 
 			// If we have a manifest, args are commands, otherwise args are image and commands
 			if manifest != nil {
-				submissionConfig.Command = args
+				if nargs > 0 {
+					submissionConfig.Command = args
+				}
 			} else {
 				submissionConfig.Image = args[0]
 				if nargs > 1 {
