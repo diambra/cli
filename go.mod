@@ -12,7 +12,7 @@ require (
 require (
 	github.com/Azure/go-ansiterm v0.0.0-20210617225240-d185dfc1b5a1 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
-	github.com/diambra/init v0.0.0-20230216141228-5159ca46e881 // indirect
+	github.com/diambra/init v0.0.0-20230219140719-b6f8a6ca8d5c // indirect
 	github.com/golang/protobuf v1.5.2 // indirect
 	github.com/mattn/go-colorable v0.1.9 // indirect
 	github.com/mattn/go-isatty v0.0.14 // indirect
