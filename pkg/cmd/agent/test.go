@@ -4,6 +4,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"os/exec"
+	"os/signal"
+	"syscall"
 
 	"github.com/containerd/console"
 	"github.com/diambra/cli/pkg/container"
@@ -103,7 +106,8 @@ func TestFn(logger *log.Logger, c *diambra.EnvConfig, submission *client.Submiss
 	if err != nil {
 		return err
 	}
-	d, err := diambra.NewDiambra(logger, console.Current(), runner, c)
+	console := console.Current()
+	d, err := diambra.NewDiambra(logger, console, runner, c)
 	if err != nil {
 		return fmt.Errorf("couldn't create DIAMBRA Env: %w", err)
 	}
@@ -111,6 +115,27 @@ func TestFn(logger *log.Logger, c *diambra.EnvConfig, submission *client.Submiss
 		if err := d.Cleanup(); err != nil {
 			level.Error(logger).Log("msg", "Couldn't cleanup DIAMBRA Env", "err", err.Error())
 		}
+	}()
+	var (
+		signalCh = make(chan os.Signal, 1)
+		ex       *exec.Cmd
+	)
+	signal.Notify(signalCh, os.Interrupt, syscall.SIGTERM)
+	go func() {
+		s := <-signalCh
+		level.Info(logger).Log("msg", "Received signal, terminating", "signal", s)
+		if err := console.Reset(); err != nil {
+			level.Error(logger).Log("msg", "Couldn't reset console", "err", err.Error())
+		}
+		if err := d.Cleanup(); err != nil {
+			level.Error(logger).Log("msg", "cleanup failed", "err", err.Error())
+		}
+		if ex != nil {
+			if err := ex.Process.Kill(); err != nil {
+				level.Error(logger).Log("msg", "Couldn't kill process", "err", err.Error())
+			}
+		}
+		os.Exit(1)
 	}()
 	level.Debug(logger).Log("msg", "starting DIAMBRA env")
 	if err := d.Start(); err != nil {
