@@ -8,9 +8,6 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
-	"strings"
-
-	"github.com/diambra/cli/pkg/diambra"
 
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
@@ -54,20 +51,9 @@ type Config struct {
 	Secret    bool
 }
 
-func NewConfig(logger log.Logger) (*Config, error) {
-	parts, err := diambra.GetInstalledPackageVersion("diambra-arena")
-	if err != nil || len(parts) != 3 || (parts[0] == "0" && parts[1] == "0" && parts[2] == "0") {
-		level.Info(logger).Log("msg", "can't find installed diambra-arena version, using latest", "err", err)
-		parts, err = diambra.GetLatestDiambraArenaVersion()
-		if err != nil {
-			return nil, err
-		}
-	}
-	level.Debug(logger).Log("msg", "using diambra-engine version", "version", strings.Join(parts, "."))
+func NewConfig() (*Config, error) {
 	return &Config{
-		Arena: ArenaConfig{
-			Version: strings.Join(parts, "."),
-		},
+		Arena: ArenaConfig{},
 		Python: PythonConfig{
 			Version: "3.7", // FIXME: Detect version
 		},

@@ -18,7 +18,9 @@ package agent
 import (
 	"fmt"
 	"os"
+	"strings"
 
+	"github.com/diambra/cli/pkg/diambra"
 	"github.com/diambra/cli/pkg/diambra/agents"
 	"github.com/diambra/cli/pkg/log"
 	"github.com/go-kit/log/level"
@@ -26,7 +28,7 @@ import (
 )
 
 func NewInitCmd(logger *log.Logger) *cobra.Command {
-	config, err := agents.NewConfig(logger)
+	config, err := agents.NewConfig()
 	if err != nil {
 		level.Error(logger).Log("msg", "failed to create config", "err", err)
 		os.Exit(1)
@@ -36,6 +38,16 @@ func NewInitCmd(logger *log.Logger) *cobra.Command {
 		Short: "Prepares local directory as agent for submission",
 		Long:  `This creates all files needed to submit an agent.`,
 		Run: func(cmd *cobra.Command, args []string) {
+			parts, err := diambra.GetInstalledPackageVersion("diambra-arena")
+			if err != nil || len(parts) != 3 || (parts[0] == "0" && parts[1] == "0" && parts[2] == "0") {
+				level.Info(logger).Log("msg", "can't find installed diambra-arena version, using latest", "err", err)
+				parts, err = diambra.GetLatestDiambraArenaVersion()
+				if err != nil {
+					level.Error(logger).Log("msg", "failed to get latest diambra arena version", "err", err.Error())
+					os.Exit(1)
+				}
+			}
+			config.Arena.Version = strings.Join(parts, ".")
 			if err := agents.Generate(logger, args[0], config); err != nil {
 				level.Error(logger).Log("msg", "failed to initialize agent", "err", err.Error())
 				os.Exit(1)
