@@ -87,6 +87,9 @@ func (c *Client) Submission(id int) (*Submission, error) {
 
 func ManifestFromPath(path string) (*Manifest, error) {
 	manifest := &Manifest{}
+	if path == "-" {
+		return manifest, yaml.NewDecoder(os.Stdin).Decode(manifest)
+	}
 	f, err := os.Open(path)
 	if err != nil {
 		return nil, fmt.Errorf("failed to open manifest: %w", err)
