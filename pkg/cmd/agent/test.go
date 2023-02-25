@@ -34,54 +34,12 @@ func NewTestCmd(logger *log.Logger) *cobra.Command {
 	}
 
 	cmd := &cobra.Command{
-		Use:   "test [--submission.manifest submission-manifest.yaml | docker-image] [commands ...]",
+		Use:   "test [--submission.manifest submission-manifest.yaml | docker-image] -- [commands ...]",
 		Short: "Run an agent from image or manifest similar to how it would be evaluated",
 		Long: `This takes a docker image or submission manifest and runs it in the same way as it would be run when submitted
 		to DIAMBRA. This is useful for testing your agent before submitting it. Optionally, you can pass in commands to run instead of the configured entrypoint.`,
 		Run: func(cmd *cobra.Command, args []string) {
-			var (
-				nargs    = len(args)
-				manifest *client.Manifest
-			)
-
-			switch {
-			case submissionConfig.SubmissionID != 0:
-				cl, err := client.NewClient(logger, c.CredPath)
-				if err != nil {
-					level.Error(logger).Log("msg", "failed to create client", "err", err.Error())
-					os.Exit(1)
-				}
-				s, err := cl.Submission(submissionConfig.SubmissionID)
-				if err != nil {
-					level.Error(logger).Log("msg", "failed to get submission", "err", err.Error())
-					os.Exit(1)
-				}
-				manifest = &s.Manifest
-			case submissionConfig.ManifestPath != "":
-				manifest, err = client.ManifestFromPath(submissionConfig.ManifestPath)
-				if err != nil {
-					level.Error(logger).Log("msg", "failed to read manifest", "err", err.Error())
-					os.Exit(1)
-				}
-			default:
-				if nargs == 0 {
-					level.Error(logger).Log("msg", "either image, manifest path or submission id must be provided")
-					os.Exit(1)
-				}
-			}
-
-			// If we have a manifest, args are commands, otherwise args are image and commands
-			if manifest != nil {
-				if nargs > 0 {
-					submissionConfig.Command = args
-				}
-			} else {
-				submissionConfig.Image = args[0]
-				if nargs > 1 {
-					submissionConfig.Command = args[1:]
-				}
-			}
-			submission, err := submissionConfig.Submission(manifest)
+			submission, err := submissionConfig.Submission(c.CredPath, args)
 			if err != nil {
 				level.Error(logger).Log("msg", "failed to configure manifest", "err", err.Error())
 				os.Exit(1)

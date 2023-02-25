@@ -38,26 +38,15 @@ func NewSubmitCmd(logger *log.Logger) *cobra.Command {
 	}
 
 	cmd := &cobra.Command{
-		Use:   "submit [--submission.manifest submission-manifest.yaml | docker-image]",
+		Use:   "submit [--submission.manifest submission-manifest.yaml | docker-image] -- [commands ...]",
 		Short: "Submits an agent for evaluation",
 		Long:  `This takes a docker image or submission manifest and submits it for evaluation.`,
-		Args:  cobra.MaximumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
-			var manifest *client.Manifest
-			if len(args) > 0 {
-				submissionConfig.Image = args[0]
-			} else if submissionConfig.ManifestPath == "" {
-				level.Error(logger).Log("msg", "either image or manifest path must be provided")
-				os.Exit(1)
-			}
 			if err := diambra.EnsureCredentials(logger, c.CredPath); err != nil {
 				level.Error(logger).Log("msg", err.Error())
 				os.Exit(1)
 			}
-			if submissionConfig.ManifestPath != "" {
-				manifest, err = client.ManifestFromPath(submissionConfig.ManifestPath)
-			}
-			submission, err := submissionConfig.Submission(manifest)
+			submission, err := submissionConfig.Submission(c.CredPath, args)
 			if err != nil {
 				level.Error(logger).Log("msg", "failed to configure manifest", "err", err.Error())
 				os.Exit(1)

@@ -257,10 +257,49 @@ func (c *SubmissionConfig) AddFlags(flags *pflag.FlagSet) {
 	flags.IntVar(&c.SubmissionID, "submission.id", 0, "Submission ID to retrieve manifest from")
 }
 
-func (c *SubmissionConfig) Submission(manifest *client.Manifest) (*client.Submission, error) {
-	if manifest == nil {
-		manifest = &client.Manifest{}
+func (c *SubmissionConfig) Submission(credPath string, args []string) (*client.Submission, error) {
+	var (
+		nargs    = len(args)
+		manifest *client.Manifest
+	)
+
+	switch {
+	case c.SubmissionID != 0:
+		cl, err := client.NewClient(c.logger, credPath)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create client: %w", err)
+		}
+		s, err := cl.Submission(c.SubmissionID)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get submission: %w", err)
+		}
+		manifest = &s.Manifest
+	case c.ManifestPath != "":
+		var err error
+		manifest, err = client.ManifestFromPath(c.ManifestPath)
+		if err != nil {
+			return nil, fmt.Errorf("failed to read manifest: %w", err)
+		}
+	default:
+		if nargs == 0 {
+			return nil, fmt.Errorf("either image, manifest path or submission id must be provided")
+		}
 	}
+
+	// If we have a manifest, args are commands, otherwise args are image and commands
+	if manifest != nil {
+		if nargs > 0 {
+			c.Command = args
+		}
+	} else {
+		manifest = &client.Manifest{}
+		c.Image = args[0]
+		if nargs > 1 {
+			c.Command = args[1:]
+		}
+	}
+
+	// Override manifest values with command line flags if given
 	if c.Image != "" {
 		manifest.Image = c.Image
 	}
