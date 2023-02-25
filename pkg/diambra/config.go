@@ -184,10 +184,10 @@ func (c *EnvConfig) Validate() error {
 
 	if c.Image == "" {
 		tag := DefaultEnvImageTag
-		parts, err := GetInstalledDiambraArenaVersion()
+		parts, err := GetInstalledPackageVersion("diambra-engine")
 		if err != nil || len(parts) != 3 || (parts[0] == "0" && parts[1] == "0" && parts[2] == "0") {
 			level.Warn(c.logger).Log(
-				"msg", "Can't find diambra-arena package to automatically configure env image, using default version. Did you activate your virtual/condaenv?",
+				"msg", "Can't find diambra-engine package to automatically determine engine image, using default version. Did you activate your virtual/condaenv?",
 				"tag", DefaultEnvImageTag,
 				"err", fmt.Sprintf("%v", err),
 			)

@@ -55,9 +55,9 @@ type Config struct {
 }
 
 func NewConfig(logger log.Logger) (*Config, error) {
-	parts, err := diambra.GetInstalledDiambraArenaVersion()
+	parts, err := diambra.GetInstalledPackageVersion("diambra-arena")
 	if err != nil || len(parts) != 3 || (parts[0] == "0" && parts[1] == "0" && parts[2] == "0") {
-		level.Info(logger).Log("msg", "can't find local diambra-arena version, using latest", "err", err)
+		level.Info(logger).Log("msg", "can't find installed diambra-arena version, using latest", "err", err)
 		parts, err = diambra.GetLatestDiambraArenaVersion()
 		if err != nil {
 			return nil, err
