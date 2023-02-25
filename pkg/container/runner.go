@@ -96,6 +96,10 @@ type Container struct {
 	Hostname         string
 	WorkingDir       string
 	IPCMode          string
+
+	// If true, the entrypoint of the image will be overridden. Only used for
+	// `diambra agent test`.
+	OverrideEntrypoint bool
 }
 
 type ContainerStatus struct {

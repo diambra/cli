@@ -74,7 +74,6 @@ func (r *DockerRunner) Start(c *Container) (*ContainerStatus, error) {
 		config = &container.Config{
 			Image:     c.Image,
 			Hostname:  c.Hostname,
-			Cmd:       c.Args,
 			Env:       c.Env,
 			User:      c.User,
 			Tty:       true,
@@ -92,6 +91,12 @@ func (r *DockerRunner) Start(c *Container) (*ContainerStatus, error) {
 		}
 	)
 	hostConfig.Mounts = make([]mount.Mount, len(c.BindMounts))
+
+	if c.OverrideEntrypoint {
+		config.Entrypoint = c.Args
+	} else {
+		config.Cmd = c.Args
+	}
 
 	if c.PortMapping != nil {
 		hostConfig.PortBindings = make(nat.PortMap, len(*c.PortMapping))

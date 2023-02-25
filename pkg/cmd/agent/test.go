@@ -23,6 +23,9 @@ const (
 )
 
 func NewTestCmd(logger *log.Logger) *cobra.Command {
+	var (
+		overrideEntrypoint bool
+	)
 	submissionConfig := diambra.NewSubmissionConfig(logger)
 	c, err := diambra.NewConfig(logger)
 	if err != nil {
@@ -35,7 +38,6 @@ func NewTestCmd(logger *log.Logger) *cobra.Command {
 		Short: "Run an agent from image or manifest similar to how it would be evaluated",
 		Long: `This takes a docker image or submission manifest and runs it in the same way as it would be run when submitted
 		to DIAMBRA. This is useful for testing your agent before submitting it. Optionally, you can pass in commands to run instead of the configured entrypoint.`,
-		Args: cobra.MaximumNArgs(2),
 		Run: func(cmd *cobra.Command, args []string) {
 			var (
 				nargs    = len(args)
@@ -84,7 +86,7 @@ func NewTestCmd(logger *log.Logger) *cobra.Command {
 				level.Error(logger).Log("msg", "failed to configure manifest", "err", err.Error())
 				os.Exit(1)
 			}
-			if err := TestFn(logger, c, submission); err != nil {
+			if err := TestFn(logger, c, submission, overrideEntrypoint); err != nil {
 				level.Error(logger).Log("msg", "failed to run agent", "err", err.Error(), "manifest", fmt.Sprintf("%#v", submission.Manifest))
 				os.Exit(1)
 			}
@@ -92,10 +94,11 @@ func NewTestCmd(logger *log.Logger) *cobra.Command {
 	}
 	c.AddFlags(cmd.Flags())
 	submissionConfig.AddFlags(cmd.Flags())
+	cmd.Flags().BoolVar(&overrideEntrypoint, "agent.override-entrypoint", false, "Override the entrypoint of the image with the command provided")
 	return cmd
 }
 
-func TestFn(logger *log.Logger, c *diambra.EnvConfig, submission *client.Submission) error {
+func TestFn(logger *log.Logger, c *diambra.EnvConfig, submission *client.Submission, overrideEntrypoint bool) error {
 	level.Debug(logger).Log("manifest", fmt.Sprintf("%#v", submission.Manifest), "config", fmt.Sprintf("%#v", c))
 
 	client, err := dclient.NewClientWithOpts(dclient.FromEnv, dclient.WithAPIVersionNegotiation())
@@ -149,8 +152,9 @@ func TestFn(logger *log.Logger, c *diambra.EnvConfig, submission *client.Submiss
 		i++
 	}
 	ctnr := &container.Container{
-		Image: submission.Manifest.Image,
-		Env:   env,
+		Image:              submission.Manifest.Image,
+		Env:                env,
+		OverrideEntrypoint: overrideEntrypoint,
 	}
 	if submission.Manifest.Command != nil {
 		ctnr.Args = submission.Manifest.Command
