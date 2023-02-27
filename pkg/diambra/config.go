@@ -168,6 +168,7 @@ func (c *EnvConfig) AddFlags(flags *pflag.FlagSet) {
 
 	// Other flags
 	flags.StringVar(&c.InitImage, "init.image", "ghcr.io/diambra/init:main", "Init image to use")
+	flags.SetInterspersed(false)
 }
 
 func (c *EnvConfig) Validate() error {
