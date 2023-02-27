@@ -16,6 +16,7 @@
 package diambra
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"os/user"
@@ -227,18 +228,19 @@ const (
 	DifficultyHard   Difficulty = "hard"
 )
 
+var ErrInvalidArgs = errors.New("either image, manifest path or submission id must be provided")
+
 type SubmissionConfig struct {
 	logger log.Logger
 
-	Image        string
-	Mode         string
-	Difficulty   string
-	EnvVars      map[string]string
-	Sources      map[string]string
-	Secrets      map[string]string
-	Command      []string
-	ManifestPath string
-	SubmissionID int
+	Mode          string
+	Difficulty    string
+	EnvVars       map[string]string
+	Sources       map[string]string
+	Secrets       map[string]string
+	ArgsIsCommand bool
+	ManifestPath  string
+	SubmissionID  int
 }
 
 func NewSubmissionConfig(logger log.Logger) *SubmissionConfig {
@@ -255,6 +257,7 @@ func (c *SubmissionConfig) AddFlags(flags *pflag.FlagSet) {
 	flags.StringToStringVar(&c.Secrets, "submission.secret", nil, "Secrets to pass to the agent")
 	flags.StringVar(&c.ManifestPath, "submission.manifest", "", "Path to manifest file.")
 	flags.IntVar(&c.SubmissionID, "submission.id", 0, "Submission ID to retrieve manifest from")
+	flags.BoolVar(&c.ArgsIsCommand, "submission.set-command", false, "Treat positional arguments are command instead of entrypoint")
 }
 
 func (c *SubmissionConfig) Submission(credPath string, args []string) (*client.Submission, error) {
@@ -284,25 +287,18 @@ func (c *SubmissionConfig) Submission(credPath string, args []string) (*client.S
 		if nargs == 0 {
 			return nil, fmt.Errorf("either image, manifest path or submission id must be provided")
 		}
+		// If we don't have a manifest, args are image and args
+		manifest = &client.Manifest{}
+		manifest.Image, args = args[0], args[1:]
 	}
 
-	// If we have a manifest, args are commands, otherwise args are image and commands
-	if manifest != nil {
-		if nargs > 0 {
-			c.Command = args
-		}
+	if c.ArgsIsCommand {
+		manifest.Command = args
 	} else {
-		manifest = &client.Manifest{}
-		c.Image = args[0]
-		if nargs > 1 {
-			c.Command = args[1:]
-		}
+		manifest.Args = args
 	}
 
 	// Override manifest values with command line flags if given
-	if c.Image != "" {
-		manifest.Image = c.Image
-	}
 	if c.Mode != "" {
 		manifest.Mode = client.Mode(c.Mode)
 	}
@@ -326,10 +322,6 @@ func (c *SubmissionConfig) Submission(credPath string, args []string) (*client.S
 		for k, v := range c.Sources {
 			manifest.Sources[k] = v
 		}
-	}
-
-	if c.Command != nil {
-		manifest.Command = c.Command
 	}
 
 	if manifest.Sources != nil {

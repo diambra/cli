@@ -83,6 +83,8 @@ func (r *DockerRunner) Start(c *Container) (*ContainerStatus, error) {
 			},
 			StopSignal: "SIGKILL", // FIXME: Make diambraApp handle SIGTERM insteads
 			WorkingDir: c.WorkingDir,
+			Cmd:        c.Args,
+			Entrypoint: c.Command,
 		}
 		hostConfig = &container.HostConfig{
 			AutoRemove:  r.AutoRemove,
@@ -91,12 +93,6 @@ func (r *DockerRunner) Start(c *Container) (*ContainerStatus, error) {
 		}
 	)
 	hostConfig.Mounts = make([]mount.Mount, len(c.BindMounts))
-
-	if c.OverrideEntrypoint {
-		config.Entrypoint = c.Args
-	} else {
-		config.Cmd = c.Args
-	}
 
 	if c.PortMapping != nil {
 		hostConfig.PortBindings = make(nat.PortMap, len(*c.PortMapping))

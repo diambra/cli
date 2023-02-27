@@ -26,6 +26,7 @@ type Manifest struct {
 	Mode       Mode              `yaml:"mode" json:"mode"`
 	Difficulty string            `yaml:"difficulty,omitempty" json:"difficulty,omitempty"`
 	Command    []string          `yaml:"command,omitempty" json:"command,omitempty"`
+	Args       []string          `yaml:"args,omitempty" json:"args,omitempty"`
 	Env        map[string]string `yaml:"env,omitempty" json:"env,omitempty"`
 	Sources    map[string]string `yaml:"sources,omitempty" json:"sources,omitempty"`
 }

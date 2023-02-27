@@ -23,9 +23,6 @@ const (
 )
 
 func NewTestCmd(logger *log.Logger) *cobra.Command {
-	var (
-		overrideEntrypoint bool
-	)
 	submissionConfig := diambra.NewSubmissionConfig(logger)
 	c, err := diambra.NewConfig(logger)
 	if err != nil {
@@ -44,7 +41,7 @@ func NewTestCmd(logger *log.Logger) *cobra.Command {
 				level.Error(logger).Log("msg", "failed to configure manifest", "err", err.Error())
 				os.Exit(1)
 			}
-			if err := TestFn(logger, c, submission, overrideEntrypoint); err != nil {
+			if err := TestFn(logger, c, submission); err != nil {
 				level.Error(logger).Log("msg", "failed to run agent", "err", err.Error(), "manifest", fmt.Sprintf("%#v", submission.Manifest))
 				os.Exit(1)
 			}
@@ -52,11 +49,10 @@ func NewTestCmd(logger *log.Logger) *cobra.Command {
 	}
 	c.AddFlags(cmd.Flags())
 	submissionConfig.AddFlags(cmd.Flags())
-	cmd.Flags().BoolVar(&overrideEntrypoint, "agent.override-entrypoint", false, "Override the entrypoint of the image with the command provided")
 	return cmd
 }
 
-func TestFn(logger *log.Logger, c *diambra.EnvConfig, submission *client.Submission, overrideEntrypoint bool) error {
+func TestFn(logger *log.Logger, c *diambra.EnvConfig, submission *client.Submission) error {
 	level.Debug(logger).Log("manifest", fmt.Sprintf("%#v", submission.Manifest), "config", fmt.Sprintf("%#v", c))
 
 	client, err := dclient.NewClientWithOpts(dclient.FromEnv, dclient.WithAPIVersionNegotiation())
@@ -110,12 +106,14 @@ func TestFn(logger *log.Logger, c *diambra.EnvConfig, submission *client.Submiss
 		i++
 	}
 	ctnr := &container.Container{
-		Image:              submission.Manifest.Image,
-		Env:                env,
-		OverrideEntrypoint: overrideEntrypoint,
+		Image: submission.Manifest.Image,
+		Env:   env,
 	}
 	if submission.Manifest.Command != nil {
-		ctnr.Args = submission.Manifest.Command
+		ctnr.Command = submission.Manifest.Command
+	}
+	if submission.Manifest.Args != nil {
+		ctnr.Args = submission.Manifest.Args
 	}
 	if submission.Manifest.Difficulty != "" {
 		level.Warn(logger).Log("msg", "difficulty is ignored in test mode")
