@@ -117,19 +117,12 @@ func NewConfig(logger log.Logger) (*EnvConfig, error) {
 	if err != nil {
 		return nil, fmt.Errorf("couldn't get hostname: %w", err)
 	}
-	preallocatePort := false
-	if runtime.GOOS == "windows" {
-		// FIXME: Wrap this in condition that check if runtime is affected
-		// by https://github.com/moby/moby/issues/4393
-		preallocatePort = true
-	}
 	return &EnvConfig{
-		logger:          logger,
-		User:            userName,
-		Home:            homedir,
-		Hostname:        hostname,
-		Output:          os.Stderr,
-		PreallocatePort: preallocatePort,
+		logger:   logger,
+		User:     userName,
+		Home:     homedir,
+		Hostname: hostname,
+		Output:   os.Stderr,
 	}, nil
 }
 
@@ -142,7 +135,12 @@ func (c *EnvConfig) AddRomsPathFlag(flags *pflag.FlagSet) {
 }
 
 func (c *EnvConfig) AddFlags(flags *pflag.FlagSet) {
-
+	preallocatePort := false
+	if runtime.GOOS == "windows" {
+		// FIXME: Wrap this in condition that check if runtime is affected
+		// by https://github.com/moby/moby/issues/4393
+		preallocatePort = true
+	}
 	// Path configuration
 	flags.StringVar(&c.CredPath, "path.credentials", filepath.Join(c.Home, ".diambra/credentials"), "Path to credentials file")
 	c.AddRomsPathFlag(flags)
@@ -157,6 +155,7 @@ func (c *EnvConfig) AddFlags(flags *pflag.FlagSet) {
 	flags.StringVar(&c.Image, "env.image", "", "Env image to use, omit to detect from diambra-arena version")
 	flags.StringVar(&c.SeccompProfile, "env.seccomp", "unconfined", "Path to seccomp profile to use for env (may slow down environment). Set to \"\" for runtime's default profile.")
 	flags.StringSliceVar(&c.mounts, "env.mount", []string{}, "Host mounts for env container (/host/path:/container/path)")
+	flags.BoolVar(&c.PreallocatePort, "env.preallocateport", preallocatePort, "Preallocate port for env container. Workaround for port conflicts on Windows")
 
 	// Flags to configure engine in env container
 	flags.BoolVarP(&c.AppArgs.Render, "engine.render", "g", false, "Render graphics server side")
