@@ -54,7 +54,6 @@ The DIAMBRA arena python package will automatically be configured by this.
 
 The flag --agent-image can be used to run the commands in the given image.`,
 		Run: func(cmd *cobra.Command, args []string) {
-			level.Debug(logger).Log("config", fmt.Sprintf("%#v", c))
 			if err := RunFn(logger, c, args); err != nil {
 				if exitErr, ok := err.(*exec.ExitError); ok {
 					code := exitErr.ExitCode()
@@ -70,8 +69,6 @@ The flag --agent-image can be used to run the commands in the given image.`,
 	}
 
 	c.AddFlags(cmd.Flags())
-
-	cmd.Flags().SetInterspersed(false)
 
 	return cmd
 }
