@@ -215,6 +215,7 @@ func (d *Diambra) copyLogs(done *bool, wc io.WriteCloser, in io.Reader, out io.W
 }
 
 func (d *Diambra) Start() error {
+	level.Debug(d.Logger).Log("msg", "starting diambra", "config", fmt.Sprintf("%+v", d.config))
 	if err := d.config.Validate(); err != nil {
 		return err
 	}
