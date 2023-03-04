@@ -77,5 +77,6 @@ func NewSubmitCmd(logger *log.Logger) *cobra.Command {
 	// FIXME: Split this out of EnvConfig
 	cmd.Flags().StringVar(&c.CredPath, "path.credentials", filepath.Join(c.Home, ".diambra/credentials"), "Path to credentials file")
 	cmd.Flags().BoolVar(&dump, "dump", false, "Dump the manifest to stdout instead of submitting")
+	cmd.Flags().SetInterspersed(false)
 	return cmd
 }

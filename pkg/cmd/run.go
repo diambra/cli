@@ -69,7 +69,7 @@ The flag --agent-image can be used to run the commands in the given image.`,
 	}
 
 	c.AddFlags(cmd.Flags())
-
+	cmd.Flags().SetInterspersed(false)
 	return cmd
 }
 

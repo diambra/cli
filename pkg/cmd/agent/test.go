@@ -49,6 +49,7 @@ func NewTestCmd(logger *log.Logger) *cobra.Command {
 	}
 	c.AddFlags(cmd.Flags())
 	submissionConfig.AddFlags(cmd.Flags())
+	cmd.Flags().SetInterspersed(false)
 	return cmd
 }
 
