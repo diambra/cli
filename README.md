@@ -16,9 +16,10 @@ Available Commands:
   run         Runs a command with DIAMBRA arena started
 
 Flags:
-  -d, --debug    Enable debug logging
-  -h, --help     help for diambra
-  -t, --toggle   Help message for toggle
+  -h, --help                help for diambra
+  -d, --log.debug           Enable debug logging
+      --log.format string   Set logging output format (logfmt, json, fancy) (default "fancy")
+  -v, --version             version for diambra
 
 Use "diambra [command] --help" for more information about a command.
 ```
