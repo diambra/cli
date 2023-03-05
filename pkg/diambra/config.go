@@ -87,8 +87,10 @@ type EnvConfig struct {
 	User           string
 	SeccompProfile string
 	Output         *os.File
-	Tty            bool // stdin is a terminal
-	Interactive    bool // interaction requested
+	Tty            bool   // stdin is a terminal
+	Interactive    bool   // interaction requested
+	Host           string // address to listen on
+	UseContainerIP bool   // use container IP and container port instead of localhost:hostPort
 
 	Home     string
 	Hostname string
@@ -156,6 +158,8 @@ func (c *EnvConfig) AddFlags(flags *pflag.FlagSet) {
 	flags.StringVar(&c.SeccompProfile, "env.seccomp", "unconfined", "Path to seccomp profile to use for env (may slow down environment). Set to \"\" for runtime's default profile.")
 	flags.StringSliceVar(&c.mounts, "env.mount", []string{}, "Host mounts for env container (/host/path:/container/path)")
 	flags.BoolVar(&c.PreallocatePort, "env.preallocateport", preallocatePort, "Preallocate port for env container. Workaround for port conflicts on Windows")
+	flags.StringVar(&c.Host, "env.host", "127.0.0.1", "Host to bind ports on")
+	flags.BoolVar(&c.UseContainerIP, "env.containerip", false, "Use <containerIP>:<containerPort> instead of <env.host/localhost>:<hostPort>")
 
 	// Flags to configure engine in env container
 	flags.BoolVarP(&c.AppArgs.Render, "engine.render", "g", false, "Render graphics server side")
