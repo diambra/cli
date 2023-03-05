@@ -74,7 +74,17 @@ func (e *Diambra) EnvsString() (string, error) {
 		if err != nil {
 			return "", fmt.Errorf("invalid port %s: %w", env.Port, err)
 		}
-		envs[i] = fmt.Sprintf("%s:%d", env.Address.Host, portn)
+		host := env.Address.Host
+		if e.config.UseContainerIP {
+			host = env.ContainerStatus.Address
+			portn = 50051
+		} else {
+			if !net.ParseIP(host).IsLoopback() {
+
+				host = "127.0.0.1"
+			}
+		}
+		envs[i] = fmt.Sprintf("%s:%d", host, portn)
 	}
 	return strings.Join(envs, " "), nil
 }
@@ -241,7 +251,7 @@ func newEnvContainer(config *EnvConfig, envID, randomSeed int) (*container.Conta
 		hostPort = fmt.Sprintf("%d/tcp", listener.Addr().(*net.TCPAddr).Port)
 	}
 
-	pm.AddPortMapping(ContainerPort, hostPort, "127.0.0.1")
+	pm.AddPortMapping(ContainerPort, hostPort, config.Host)
 
 	args := config.AppArgs
 	args.RandomSeed = randomSeed
