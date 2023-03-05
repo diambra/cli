@@ -45,7 +45,7 @@ func NewCmdRun(logger *log.Logger) *cobra.Command {
 	}
 
 	cmd := &cobra.Command{
-		Use:   "run",
+		Use:   "run [flags] command [args...]",
 		Short: "Runs a command with DIAMBRA arena started",
 		Long: `Run runs the given command after diambraEngine is brought up.
 
