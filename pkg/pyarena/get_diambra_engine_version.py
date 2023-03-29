@@ -2,6 +2,6 @@
 import sys
 import pkg_resources
 
-PKG = sys.argv[0] if sys.argv[0] else "diambra-engine"
+PKG = sys.argv[1] if len(sys.argv) > 1 else "diambra-engine"
 
 print(pkg_resources.get_distribution(PKG).version)
