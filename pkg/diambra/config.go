@@ -75,10 +75,10 @@ type EnvConfig struct {
 
 	AppArgs AppArgs
 
-	Scale      int
-	AutoRemove bool
-	AgentImage string
-	PullImage  bool
+	Scale       int
+	AutoRemove  bool
+	AgentImage  string
+	NoPullImage bool
 
 	RomsPath string
 	CredPath string
@@ -149,7 +149,7 @@ func (c *EnvConfig) AddFlags(flags *pflag.FlagSet) {
 
 	// Flags that apply to both agent and env
 	flags.BoolVarP(&c.Interactive, "interactive", "i", true, "Open stdin for interactions with arena and agent")
-	flags.BoolVarP(&c.PullImage, "images.pull", "p", true, "(Always) pull image before running")
+	flags.BoolVarP(&c.NoPullImage, "images.no-pull", "n", false, "Do not try to pull image before running")
 
 	// Flags to configure env container
 	flags.IntVarP(&c.Scale, "env.scale", "s", 1, "Number of environments to run")
@@ -164,7 +164,7 @@ func (c *EnvConfig) AddFlags(flags *pflag.FlagSet) {
 	// Flags to configure engine in env container
 	flags.BoolVarP(&c.AppArgs.Render, "engine.render", "g", false, "Render graphics server side")
 	flags.BoolVarP(&c.AppArgs.LockFPS, "engine.lockfps", "l", false, "Lock FPS")
-	flags.BoolVarP(&c.AppArgs.Sound, "engine.sound", "n", false, "Enable sound")
+	flags.BoolVar(&c.AppArgs.Sound, "engine.sound", false, "Enable sound")
 
 	// Agent flags
 	flags.StringVarP(&c.AgentImage, "agent.image", "a", "", "Run given agent command in container")

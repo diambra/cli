@@ -139,7 +139,7 @@ func (d *Diambra) start(envId int, first bool) error {
 		return fmt.Errorf("couldn't create env container: %w", err)
 	}
 
-	if first && d.config.PullImage {
+	if first && !d.config.NoPullImage {
 		if err := d.Runner.Pull(ec, d.config.Output); err != nil {
 			return err
 		}
@@ -308,7 +308,7 @@ func (e *Diambra) RunAgentImage(image string, args []string) error {
 }
 
 func (e *Diambra) RunAgentContainer(c *container.Container) (int, error) {
-	if e.config.PullImage {
+	if !e.config.NoPullImage {
 		if err := e.Runner.Pull(c, e.config.Output); err != nil {
 			return 1, err
 		}

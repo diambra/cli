@@ -69,7 +69,7 @@ func TestDiambra(t *testing.T) {
 			Scale:          1,
 			AutoRemove:     false,
 			AgentImage:     "",
-			PullImage:      false,
+			NoPullImage:    false,
 			RomsPath:       os.TempDir(),
 			CredPath:       filepath.Join(os.TempDir(), "credfile"),
 			Image:          "",
