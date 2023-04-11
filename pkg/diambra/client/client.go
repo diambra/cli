@@ -7,14 +7,17 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"strings"
 
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 )
 
-var (
-	ErrForbidden = errors.New("Forbidden")
-)
+type Error struct {
+	error
+}
+
+type ErrForbidden Error
 
 // FIXME: Replace this with oapi generated code
 
@@ -32,7 +35,7 @@ func readCredentials(credPath string) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("can't read credentials file %s: %w", credPath, err)
 	}
-	return string(b), nil
+	return strings.TrimSpace(string(b)), nil
 }
 
 func NewClient(logger log.Logger, credPath string) (*Client, error) {
@@ -77,7 +80,14 @@ func (c *Client) Request(method string, path string, body io.Reader, authenticat
 		return nil, err
 	}
 	if resp.StatusCode == http.StatusUnauthorized || resp.StatusCode == http.StatusForbidden {
-		return nil, ErrForbidden
+		// read the body for error
+
+		rb, err := io.ReadAll(resp.Body)
+		if err != nil {
+			return nil, &ErrForbidden{fmt.Errorf("unauthorized; couldn't read body: %w", err)}
+		}
+		_ = resp.Body.Close()
+		return nil, ErrForbidden{errors.New(string(rb))}
 	}
 	return resp, nil
 }

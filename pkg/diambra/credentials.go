@@ -76,7 +76,7 @@ func EnsureCredentials(logger log.Logger, credPath string) error {
 			return nil
 		}
 
-		if err == client.ErrForbidden {
+		if _, ok := err.(client.ErrForbidden); ok {
 			if err := os.Remove(credPath); err != nil {
 				return fmt.Errorf("couldn't remove credentials file %s: %w", credPath, err)
 			}
