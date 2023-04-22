@@ -19,7 +19,8 @@ import (
 )
 
 const (
-	TLSCertPath = "/etc/ssl/certs"
+	TLSCertPath    = "/etc/ssl/certs"
+	EvaluationUser = "1000" // User(ID) that the agent is started as in production
 )
 
 func NewTestCmd(logger *log.Logger) *cobra.Command {
@@ -109,6 +110,7 @@ func TestFn(logger *log.Logger, c *diambra.EnvConfig, submission *client.Submiss
 	ctnr := &container.Container{
 		Image: submission.Manifest.Image,
 		Env:   env,
+		User:  EvaluationUser,
 	}
 	if submission.Manifest.Command != nil {
 		ctnr.Command = submission.Manifest.Command
@@ -153,6 +155,7 @@ func TestFn(logger *log.Logger, c *diambra.EnvConfig, submission *client.Submiss
 				"SECRETS=" + string(secretsJSON),
 			},
 			WorkingDir: "/sources",
+			User:       EvaluationUser,
 		}
 		status, err := d.RunAgentContainer(initContainer)
 		if err != nil {
