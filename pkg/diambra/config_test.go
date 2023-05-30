@@ -112,6 +112,18 @@ func TestSubmissionConfig(t *testing.T) {
 			},
 			nil,
 		},
+		{
+			"from args, with secrets",
+			SubmissionConfig{},
+			[]string{"diambra/agent-random-1:main", "--gameId", "doapp"},
+			&client.Submission{
+				Manifest: client.Manifest{
+					Image: "diambra/agent-random-1:main",
+					Args:  []string{"--gameId", "doapp"},
+				},
+			},
+			nil,
+		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			submission, err := tc.config.Submission("", tc.args)

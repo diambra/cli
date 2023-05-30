@@ -328,7 +328,7 @@ func (c *SubmissionConfig) Submission(credPath string, args []string) (*client.S
 	}
 
 	if manifest.Sources != nil {
-		init, err := initializer.NewInitializer(manifest.Sources, c.Secrets)
+		init, err := initializer.NewInitializer(manifest.Sources, c.Secrets, map[string]string{}, "")
 		if err != nil {
 			return nil, err
 		}

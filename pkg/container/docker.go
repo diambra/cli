@@ -160,9 +160,15 @@ func (r *DockerRunner) LogLogs(id string, logger log.Logger) error {
 	//_, err = stdcopy.StdCopy(os.Stdout, os.Stderr, out)
 }
 
+func ptr[T any](t T) *T {
+	return &t
+}
+
 func (r *DockerRunner) Stop(id string) error {
 	ctx := context.TODO()
-	return r.Client.ContainerStop(ctx, id, &r.TimeoutStop)
+	return r.Client.ContainerStop(ctx, id, container.StopOptions{
+		Timeout: ptr(int(r.TimeoutStop.Seconds())),
+	})
 }
 
 type HijackedResponseReader struct {
