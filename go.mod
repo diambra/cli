@@ -1,6 +1,6 @@
 module github.com/diambra/cli
 
-go 1.18
+go 1.20
 
 require (
 	github.com/diambra/init v0.0.0-20230530144809-baa1ab11fe19
