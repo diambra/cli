@@ -18,7 +18,7 @@ type Mode string
 const (
 	ModeAIvsCOM Mode = "AIvsCOM"
 
-	API = "https://diambra.ai/api/v1alpha1"
+	API = "https://api.diambra.ai/api/v1alpha1"
 )
 
 type Manifest struct {
