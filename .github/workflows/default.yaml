@@ -23,7 +23,7 @@ jobs:
     strategy:
       matrix:
         os: [linux, darwin, windows]
-        arch: [amd64, arm64]
+        arch: [amd64, arm64, aarch64]
         exclude:
         - os: windows
           arch: arm64
@@ -35,7 +35,12 @@ jobs:
       with:
         go-version: "1.20"
     - run: |
-        CGO_ENABLED=0 GOOS=${{ matrix.os }} GOARCH=${{ matrix.arch }} \
+        ARCH=${{ matrix.arch }}
+        # For aarch64 we need to create a separate python wheel but still use arm64 for the go build
+        if [ $ARCH = "aarch64" ]; then
+          ARCH="arm64"
+        fi
+        CGO_ENABLED=0 GOOS=${{ matrix.os }} GOARCH=$ARCH \
           go build -o "bin/diambra-${{ matrix.os }}-${{ matrix.arch }}" ./cmd/diambra
     - uses: actions/upload-artifact@v3
       with:
@@ -55,6 +60,7 @@ jobs:
       env:
         linux_amd64: manylinux2014_x86_64
         linux_arm64: manylinux2014_armv7l
+        linux_aarch64: manylinux2014_aarch64
         windows_amd64: win_amd64
         darwin_amd64: macosx_10_9_x86_64
         darwin_arm64: macosx_11_0_arm64
