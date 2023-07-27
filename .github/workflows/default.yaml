@@ -10,7 +10,7 @@ on:
   pull_request:
 
 jobs:
-  lint:
+  lint-and-test:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
@@ -18,6 +18,7 @@ jobs:
       with:
         go-version: "1.20"
     - uses: golangci/golangci-lint-action@v3
+    - run: go test -v ./...
 
   build:
     strategy:
@@ -27,7 +28,6 @@ jobs:
         exclude:
         - os: windows
           arch: arm64
-
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
@@ -46,17 +46,19 @@ jobs:
       with:
         name: diambra-${{ matrix.os }}-${{ matrix.arch }}
         path: bin/diambra-${{ matrix.os }}-${{ matrix.arch }}
-    - run: go test -v ./...
-    - uses: softprops/action-gh-release@v1
-      if: startsWith(github.ref, 'refs/tags/')
-      with:
-        files: bin/diambra-${{ matrix.os }}-${{ matrix.arch }}
-    - name: create pip wheel and upload it
+    - name: create pip wheel
+      id: mkwheel
       run: |
         rm -rf dist
         mkdir dist
-        ./mkwheel/mkwheel diambra "${GITHUB_REF/refs\/tags\/v/}" dist/ README.md $${{ matrix.os }}_${{ matrix.arch }} ./bin/diambra-${{ matrix.os }}-${{ matrix.arch }}
-      if: startsWith(github.ref, 'refs/tags/')
+        platform=$${{ matrix.os }}_${{ matrix.arch }}
+        if [[ "$GITHUB_REF" == "refs/tags/v"* ]]; then
+          version="${GITHUB_REF/refs\/tags\/v/}"
+        else
+          version="dev"
+        fi
+        ./mkwheel/mkwheel diambra "$version" dist/ README.md "$platform" ./bin/diambra-${{ matrix.os }}-${{ matrix.arch }}
+        echo "wheel=diambra-$version-py3-none-$platform.whl" >> $GITHUB_OUTPUT
       env:
         linux_amd64: manylinux2014_x86_64
         linux_arm64: manylinux2014_armv7l
@@ -64,6 +66,16 @@ jobs:
         windows_amd64: win_amd64
         darwin_amd64: macosx_10_9_x86_64
         darwin_arm64: macosx_11_0_arm64
+    - uses: actions/upload-artifact@v3
+      with:
+        name: ${{ steps.mkwheel.outputs.wheel }}
+        path: dist/${{ steps.mkwheel.outputs.wheel }}
+    - uses: softprops/action-gh-release@v1
+      if: startsWith(github.ref, 'refs/tags/')
+      with:
+        files: |
+          bin/diambra-${{ matrix.os }}-${{ matrix.arch }}
+          ${{ steps.mkwheel.outputs.wheel }}
     - uses: pypa/gh-action-pypi-publish@release/v1
       with:
         user: __token__
