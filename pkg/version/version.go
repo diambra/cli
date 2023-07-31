@@ -28,13 +28,9 @@ func String() string {
 	return Format(info)
 }
 
-func Format(info *debug.BuildInfo) string {
-	var (
-		clean     = false
-		revision  = ""
-		buildtime = ""
-	)
-	for _, s := range info.Settings {
+// Settings return revision, build time and clean indicator
+func Settings(settings *[]debug.BuildSetting) (revision string, buildtime string, clean bool) {
+	for _, s := range *settings {
 		switch s.Key {
 		case "vcs.revision":
 			revision = s.Value
@@ -44,6 +40,11 @@ func Format(info *debug.BuildInfo) string {
 			clean = s.Value == "false"
 		}
 	}
+	return revision, buildtime, clean
+}
+
+func Format(info *debug.BuildInfo) string {
+	revision, buildtime, clean := Settings(&info.Settings)
 	str := fmt.Sprintf("%s (built: %s, clean: %t, %s)\n\nDependencies:\n", revision, buildtime, clean, info.GoVersion)
 	for _, m := range info.Deps {
 		str += "- " + FormatModule(m) + "\n"
