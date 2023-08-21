@@ -30,7 +30,8 @@ import (
 
 func NewSubmitCmd(logger *log.Logger) *cobra.Command {
 	dump := false
-	submissionConfig := diambra.NewSubmissionConfig(logger)
+	submissionConfig := diambra.SubmissionConfig{}
+	submissionConfig.RegisterCredentialsProviders()
 	c, err := diambra.NewConfig(logger)
 	if err != nil {
 		level.Error(logger).Log("msg", err.Error())
@@ -46,7 +47,7 @@ func NewSubmitCmd(logger *log.Logger) *cobra.Command {
 				level.Error(logger).Log("msg", err.Error())
 				os.Exit(1)
 			}
-			submission, err := submissionConfig.Submission(c.CredPath, args)
+			submission, err := submissionConfig.Submission(c, args)
 			if err != nil {
 				level.Error(logger).Log("msg", "failed to configure manifest", "err", err.Error())
 				os.Exit(1)
