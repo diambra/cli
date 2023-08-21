@@ -27,6 +27,7 @@ import (
 
 	"github.com/diambra/cli/pkg/container"
 	"github.com/diambra/cli/pkg/diambra/client"
+	"github.com/diambra/cli/pkg/secretsources"
 	"github.com/diambra/init/initializer"
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
@@ -234,22 +235,28 @@ const (
 var ErrInvalidArgs = errors.New("either image, manifest path or submission id must be provided")
 
 type SubmissionConfig struct {
-	logger log.Logger
-
 	Mode          string
 	Difficulty    string
 	EnvVars       map[string]string
 	Sources       map[string]string
 	Secrets       map[string]string
+	SecretsFrom   string
 	ArgsIsCommand bool
 	ManifestPath  string
 	SubmissionID  int
+
+	credentialsProvider map[string]secretsources.CredentialProvider
 }
 
-func NewSubmissionConfig(logger log.Logger) *SubmissionConfig {
-	return &SubmissionConfig{
-		logger: logger,
+func (c *SubmissionConfig) RegisterCredentialsProvider(name string, provider secretsources.CredentialProvider) {
+	if c.credentialsProvider == nil {
+		c.credentialsProvider = make(map[string]secretsources.CredentialProvider)
 	}
+	c.credentialsProvider[name] = provider
+}
+func (c *SubmissionConfig) RegisterCredentialsProviders() {
+	c.RegisterCredentialsProvider("git", &secretsources.GitCredentials{})
+	c.RegisterCredentialsProvider("huggingface", &secretsources.HuggingfaceCredentials{})
 }
 
 func (c *SubmissionConfig) AddFlags(flags *pflag.FlagSet) {
@@ -258,12 +265,13 @@ func (c *SubmissionConfig) AddFlags(flags *pflag.FlagSet) {
 	flags.StringToStringVarP(&c.EnvVars, "submission.env", "e", nil, "Environment variables to pass to the agent")
 	flags.StringToStringVarP(&c.Sources, "submission.source", "u", nil, "Source urls to pass to the agent")
 	flags.StringToStringVar(&c.Secrets, "submission.secret", nil, "Secrets to pass to the agent")
+	flags.StringVar(&c.SecretsFrom, "submission.secrets-from", "", "Automatically add secrets. Supported values: git, huggingface")
 	flags.StringVar(&c.ManifestPath, "submission.manifest", "", "Path to manifest file.")
 	flags.IntVar(&c.SubmissionID, "submission.id", 0, "Submission ID to retrieve manifest from")
 	flags.BoolVar(&c.ArgsIsCommand, "submission.set-command", false, "Treat positional arguments are command instead of entrypoint")
 }
 
-func (c *SubmissionConfig) Submission(credPath string, args []string) (*client.Submission, error) {
+func (c *SubmissionConfig) Submission(config *EnvConfig, args []string) (*client.Submission, error) {
 	var (
 		nargs    = len(args)
 		manifest *client.Manifest
@@ -271,7 +279,7 @@ func (c *SubmissionConfig) Submission(credPath string, args []string) (*client.S
 
 	switch {
 	case c.SubmissionID != 0:
-		cl, err := client.NewClient(c.logger, credPath)
+		cl, err := client.NewClient(config.logger, config.CredPath)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create client: %w", err)
 		}
@@ -320,22 +328,62 @@ func (c *SubmissionConfig) Submission(credPath string, args []string) (*client.S
 	}
 
 	if c.Sources != nil {
-		level.Debug(c.logger).Log("msg", "Using sources", "sources", c.Sources)
+		level.Debug(config.logger).Log("msg", "Using sources", "sources", c.Sources)
 		manifest.Sources = make(map[string]string)
 		for k, v := range c.Sources {
 			manifest.Sources[k] = v
 		}
 	}
 
-	if manifest.Sources != nil {
-		init, err := initializer.NewInitializer(c.logger, manifest.Sources, c.Secrets, map[string]string{}, "")
-		if err != nil {
-			return nil, err
+	if c.SecretsFrom != "" {
+		if c.Secrets == nil {
+			c.Secrets = make(map[string]string)
 		}
+	}
 
-		if err := init.Validate(); err != nil {
-			return nil, err
+	if c.SecretsFrom != "" {
+		ss, ok := c.credentialsProvider[c.SecretsFrom]
+		if !ok {
+			return nil, fmt.Errorf("invalid value for --submission.secrets-from: %s", c.SecretsFrom)
 		}
+		switch c.SecretsFrom {
+		case "git":
+			secrets, err := secretsources.CredentialsFill(ss, manifest.Sources)
+			if err != nil {
+				return nil, err
+			}
+			if manifest.Sources == nil {
+				return nil, fmt.Errorf("sources are required to use --submission.secrets-from=git")
+			}
+			level.Debug(config.logger).Log("msg", "Adding git secrets")
+			for k, v := range secrets {
+				level.Info(config.logger).Log("msg", "Adding git secret", "key", k)
+				c.Secrets[k] = v
+			}
+		case "huggingface":
+			level.Debug(config.logger).Log("msg", "Adding huggingface secrets")
+			secrets, err := ss.Credentials("")
+			if err != nil {
+				return nil, err
+			}
+			c.Secrets["HF_TOKEN"] = secrets["HF_TOKEN"]
+			if manifest.Env == nil {
+				manifest.Env = make(map[string]string)
+			}
+			manifest.Env["HF_TOKEN"] = "{{ .Secrets.HF_TOKEN }}"
+		case "":
+		default:
+			return nil, fmt.Errorf("invalid value for --submission.secrets-from: %s", c.SecretsFrom)
+		}
+	}
+
+	init, err := initializer.NewInitializer(config.logger, manifest.Sources, c.Secrets, map[string]string{}, "")
+	if err != nil {
+		return nil, err
+	}
+
+	if err := init.Validate(); err != nil {
+		return nil, err
 	}
 
 	return &client.Submission{

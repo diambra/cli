@@ -60,7 +60,7 @@ func NewDockerRunner(logger log.Logger, client *client.Client, autoRemove bool) 
 func (r *DockerRunner) Pull(c *Container, output *os.File) error {
 	reader, err := r.Client.ImagePull(context.TODO(), c.Image, types.ImagePullOptions{})
 	if err != nil {
-		return fmt.Errorf("couldn't pull image %s: %w:\nTo disable pulling the image on start, retry with --images.pull=false", c.Image, err)
+		return fmt.Errorf("couldn't pull image %s: %w:\nTo disable pulling the image on start, retry with --images.no-pull", c.Image, err)
 	}
 	defer reader.Close()
 

@@ -24,7 +24,8 @@ const (
 )
 
 func NewTestCmd(logger *log.Logger) *cobra.Command {
-	submissionConfig := diambra.NewSubmissionConfig(logger)
+	submissionConfig := diambra.SubmissionConfig{}
+	submissionConfig.RegisterCredentialsProviders()
 	c, err := diambra.NewConfig(logger)
 	if err != nil {
 		level.Error(logger).Log("msg", err.Error())
@@ -37,7 +38,7 @@ func NewTestCmd(logger *log.Logger) *cobra.Command {
 		Long: `This takes a docker image or submission manifest and runs it in the same way as it would be run when submitted
 		to DIAMBRA. This is useful for testing your agent before submitting it. Optionally, you can pass in commands to run instead of the configured entrypoint.`,
 		Run: func(cmd *cobra.Command, args []string) {
-			submission, err := submissionConfig.Submission(c.CredPath, args)
+			submission, err := submissionConfig.Submission(c, args)
 			if err != nil {
 				level.Error(logger).Log("msg", "failed to configure manifest", "err", err.Error())
 				os.Exit(1)
