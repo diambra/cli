@@ -45,6 +45,7 @@ type AppArgs struct {
 	Render     bool
 	LockFPS    bool
 	Sound      bool
+	ExtraArgs  []string
 }
 
 type Args []string
@@ -68,6 +69,7 @@ func (a AppArgs) Args() []string {
 	args.Bool("--lockFps", a.LockFPS)
 	args.Bool("--sound", a.Sound)
 	args.Int("--randomSeed", a.RandomSeed)
+	args = append(args, a.ExtraArgs...)
 	return args
 }
 
@@ -166,6 +168,7 @@ func (c *EnvConfig) AddFlags(flags *pflag.FlagSet) {
 	flags.BoolVarP(&c.AppArgs.Render, "engine.render", "g", false, "Render graphics server side")
 	flags.BoolVarP(&c.AppArgs.LockFPS, "engine.lockfps", "l", false, "Lock FPS")
 	flags.BoolVar(&c.AppArgs.Sound, "engine.sound", false, "Enable sound")
+	flags.StringSliceVar(&c.AppArgs.ExtraArgs, "engine.args", []string{}, "Additional engine arguments")
 
 	// Agent flags
 	flags.StringVarP(&c.AgentImage, "agent.image", "a", "", "Run given agent command in container")
@@ -237,6 +240,7 @@ var ErrInvalidArgs = errors.New("either image, manifest path or submission id mu
 type SubmissionConfig struct {
 	Mode          string
 	Difficulty    string
+	Version       string
 	EnvVars       map[string]string
 	Sources       map[string]string
 	Secrets       map[string]string
@@ -262,6 +266,7 @@ func (c *SubmissionConfig) RegisterCredentialsProviders() {
 func (c *SubmissionConfig) AddFlags(flags *pflag.FlagSet) {
 	flags.StringVar(&c.Mode, "submission.mode", string(client.ModeAIvsCOM), "Mode to use for evaluation")
 	flags.StringVar(&c.Difficulty, "submission.difficulty", string(DifficultyEasy), "Difficulty to use for evaluation")
+	flags.StringVar(&c.Version, "submission.version", "", "Version to use for evaluation")
 	flags.StringToStringVarP(&c.EnvVars, "submission.env", "e", nil, "Environment variables to pass to the agent")
 	flags.StringToStringVarP(&c.Sources, "submission.source", "u", nil, "Source urls to pass to the agent")
 	flags.StringToStringVar(&c.Secrets, "submission.secret", nil, "Secrets to pass to the agent")
@@ -315,6 +320,9 @@ func (c *SubmissionConfig) Submission(config *EnvConfig, args []string) (*client
 	}
 	if c.Difficulty != "" {
 		manifest.Difficulty = c.Difficulty
+	}
+	if c.Version != "" {
+		manifest.Version = c.Version
 	}
 	if manifest.Image == "" {
 		return nil, fmt.Errorf("image is required")
