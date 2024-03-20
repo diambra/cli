@@ -4,7 +4,7 @@ go 1.20
 
 require (
 	github.com/diambra/init v0.0.0-20230711105936-6921ee0b2542
-	github.com/docker/docker v24.0.7+incompatible
+	github.com/docker/docker v24.0.9+incompatible
 	github.com/go-kit/log v0.2.1
 	github.com/moby/term v0.5.0
 	github.com/sergi/go-diff v1.3.1
