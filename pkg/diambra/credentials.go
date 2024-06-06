@@ -67,9 +67,6 @@ func EnsureCredentials(logger log.Logger, credPath string) error {
 
 	if exists {
 		var err error
-		if err != nil {
-			return fmt.Errorf("couldn't create client: %w", err)
-		}
 		user, err := dc.User()
 		if err == nil {
 			level.Info(logger).Log("msg", "logged in", "user", user.Username)

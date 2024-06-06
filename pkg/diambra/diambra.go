@@ -265,6 +265,7 @@ func newEnvContainer(config *EnvConfig, envID, randomSeed int) (*container.Conta
 			container.NewBindMount(config.CredPath, "/tmp/.diambra/credentials"),
 			container.NewBindMount(config.RomsPath, "/opt/diambraArena/roms"),
 		},
+		Sound: args.Sound,
 	}
 	c.BindMounts = append(c.BindMounts, config.Mounts...)
 
@@ -276,6 +277,7 @@ func newEnvContainer(config *EnvConfig, envID, randomSeed int) (*container.Conta
 	if config.SeccompProfile != "" {
 		c.SecurityOpt = []string{"seccomp=" + config.SeccompProfile}
 	}
+
 	return c, nil
 }
 

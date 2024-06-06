@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"runtime"
 	"strconv"
 	"strings"
 	"time"
@@ -111,6 +112,34 @@ func (r *DockerRunner) Start(c *Container) (*ContainerStatus, error) {
 			Source: m.HostPath,
 			Target: m.ContainerPath,
 		}
+	}
+	if c.Sound {
+		if runtime.GOOS == "windows" {
+			return nil, fmt.Errorf("sound is not supported on windows")
+		}
+		level.Debug(r.Logger).Log("msg", "enabling sound")
+		hostConfig.Devices = append(hostConfig.Devices, container.DeviceMapping{
+			PathOnHost:        "/dev/snd",
+			PathInContainer:   "/dev/snd",
+			CgroupPermissions: "rwm",
+		})
+
+		agid, err := getGID("/dev/snd/seq")
+		if err != nil {
+			return nil, err
+		}
+		hostConfig.GroupAdd = []string{fmt.Sprintf("%d", agid)}
+		hostConfig.Mounts = append(hostConfig.Mounts, mount.Mount{
+			Type:     mount.TypeBind,
+			Source:   "/etc/group",
+			Target:   "/etc/group",
+			ReadOnly: true,
+		}, mount.Mount{
+			Type:     mount.TypeBind,
+			Source:   "/usr/share/alsa",
+			Target:   "/usr/share/alsa",
+			ReadOnly: true,
+		})
 	}
 	level.Debug(r.Logger).Log("msg", "creating container", "config", fmt.Sprintf("%#v", config), "hostConfig", fmt.Sprintf("%#v", hostConfig))
 	dc, err := r.Client.ContainerCreate(ctx, config, hostConfig, nil, nil, "")
