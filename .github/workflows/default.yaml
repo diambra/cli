@@ -28,6 +28,10 @@ jobs:
         exclude:
         - os: windows
           arch: arm64
+        - os: windows
+          arch: aarch64
+        - os: darwin
+          arch: aarch64
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
