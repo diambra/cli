@@ -242,13 +242,13 @@ func (d *Diambra) Start() error {
 
 func newEnvContainer(config *EnvConfig, envID, randomSeed int) (*container.Container, error) {
 	pm := &container.PortMapping{}
-	hostPort := "0/tcp"
+	hostPort := "0"
 	if config.PreallocatePort {
 		listener, err := net.Listen("tcp", ":0")
 		if err != nil {
 			return nil, err
 		}
-		hostPort = fmt.Sprintf("%d/tcp", listener.Addr().(*net.TCPAddr).Port)
+		hostPort = fmt.Sprintf("%d", listener.Addr().(*net.TCPAddr).Port)
 	}
 
 	pm.AddPortMapping(ContainerPort, hostPort, config.Host)
