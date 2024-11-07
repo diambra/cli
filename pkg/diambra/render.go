@@ -30,6 +30,8 @@ func configureX11(config *EnvConfig, c *container.Container) error {
 	)
 	c.Hostname = config.Hostname
 	c.Env = append(c.Env, "DISPLAY="+os.Getenv("DISPLAY"))
+	c.Env = append(c.Env, "XDG_RUNTIME_DIR=/tmp/xdg") // avoid the XDG_RUNTIME_DIR error
+
 	c.IPCMode = "host" // We need to enable IPC to avoid "X Error:  BadShmSeg"
 	return nil
 }
