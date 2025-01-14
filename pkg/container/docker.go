@@ -30,6 +30,7 @@ import (
 	"github.com/docker/docker/api/types/filters"
 	"github.com/docker/docker/api/types/mount"
 	"github.com/docker/docker/client"
+	"github.com/docker/docker/pkg/archive"
 	"github.com/docker/docker/pkg/jsonmessage"
 	"github.com/docker/go-connections/nat"
 	"github.com/go-kit/log"
@@ -284,4 +285,24 @@ func (r *DockerRunner) StopAll() error {
 		}
 	}
 	return nil
+}
+
+func (r *DockerRunner) Build(path string, tag string) error {
+	ctx := context.Background()
+
+	context, err := archive.TarWithOptions(path, &archive.TarOptions{})
+	if err != nil {
+		return err
+	}
+	defer context.Close()
+	resp, err := r.Client.ImageBuild(ctx, context, types.ImageBuildOptions{
+		Tags: []string{tag},
+	})
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	termFd, isTerm := term.GetFdInfo(os.Stdout)
+	return jsonmessage.DisplayJSONMessagesStream(resp.Body, io.Writer(os.Stderr), termFd, isTerm, nil)
 }

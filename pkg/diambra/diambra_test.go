@@ -58,6 +58,10 @@ func (r *mockRunner) StopAll() error {
 	panic("not implemented") // TODO: Implement
 }
 
+func (r *mockRunner) Build(path, tag string) error {
+	panic("not implemented") // TODO: Implement
+}
+
 func TestDiambra(t *testing.T) {
 	var (
 		logger = log.NewLogfmtLogger(os.Stderr)

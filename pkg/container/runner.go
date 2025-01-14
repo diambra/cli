@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 
@@ -118,4 +119,13 @@ type Runner interface {
 	StopAll() error
 	Attach(id string) (io.WriteCloser, io.ReadCloser, error)
 	Wait(id string) (int, error)
+	Build(path, tag string) error
+}
+
+func TagFromDir(dir string) (string, error) {
+	wd, err := os.Getwd()
+	if err != nil {
+		return "", fmt.Errorf("failed to get current directory: %w", err)
+	}
+	return filepath.Base(filepath.Join(wd, dir)), nil
 }
