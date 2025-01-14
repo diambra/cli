@@ -232,7 +232,7 @@ const (
 	DifficultyHard   Difficulty = "hard"
 )
 
-var ErrInvalidArgs = errors.New("either image, manifest path or submission id must be provided")
+var ErrInvalidArgs = errors.New("either directory, image, manifest path or submission id must be provided")
 
 type SubmissionConfig struct {
 	Mode          string
@@ -296,7 +296,7 @@ func (c *SubmissionConfig) Submission(config *EnvConfig, args []string) (*client
 		}
 	default:
 		if nargs == 0 {
-			return nil, fmt.Errorf("either image, manifest path or submission id must be provided")
+			return nil, fmt.Errorf("either directory, image, manifest path or submission id must be provided")
 		}
 		// If we don't have a manifest, args are image and args
 		manifest = &client.Manifest{}

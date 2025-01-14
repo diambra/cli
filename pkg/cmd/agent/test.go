@@ -13,7 +13,6 @@ import (
 	"github.com/diambra/cli/pkg/diambra"
 	"github.com/diambra/cli/pkg/diambra/client"
 	"github.com/diambra/cli/pkg/log"
-	dclient "github.com/docker/docker/client"
 	"github.com/go-kit/log/level"
 	"github.com/spf13/cobra"
 )
@@ -58,11 +57,7 @@ func NewTestCmd(logger *log.Logger) *cobra.Command {
 func TestFn(logger *log.Logger, c *diambra.EnvConfig, submission *client.Submission) error {
 	level.Debug(logger).Log("manifest", fmt.Sprintf("%#v", submission.Manifest), "config", fmt.Sprintf("%#v", c))
 
-	client, err := dclient.NewClientWithOpts(dclient.FromEnv, dclient.WithAPIVersionNegotiation())
-	if err != nil {
-		return err
-	}
-	runner, err := container.NewDockerRunner(logger, client, c.AutoRemove)
+	runner, err := container.NewDockerRunner(logger, c.AutoRemove)
 	if err != nil {
 		return err
 	}

@@ -20,7 +20,6 @@ import (
 
 	"github.com/diambra/cli/pkg/container"
 	"github.com/diambra/cli/pkg/log"
-	"github.com/docker/docker/client"
 	"github.com/go-kit/log/level"
 	"github.com/spf13/cobra"
 )
@@ -31,12 +30,7 @@ func NewDownCmd(logger *log.Logger) *cobra.Command {
 		Short: "Stop DIAMBRA Arena",
 		Long:  `This stops a DIAMBRA Arena running in the background.`,
 		Run: func(_ *cobra.Command, _ []string) {
-			client, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
-			if err != nil {
-				level.Error(logger).Log("msg", "failed to create docker client", "err", err.Error())
-				os.Exit(1)
-			}
-			runner, err := container.NewDockerRunner(logger, client, true)
+			runner, err := container.NewDockerRunner(logger, true)
 			if err != nil {
 				level.Error(logger).Log("msg", "msg", "failed to create runner", "err", err.Error())
 				os.Exit(1)

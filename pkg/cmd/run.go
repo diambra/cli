@@ -28,7 +28,6 @@ import (
 	"github.com/diambra/cli/pkg/diambra"
 	"github.com/diambra/cli/pkg/log"
 
-	"github.com/docker/docker/client"
 	"github.com/go-kit/log/level"
 	"github.com/spf13/cobra"
 )
@@ -76,11 +75,7 @@ The flag --agent-image can be used to run the commands in the given image.`,
 func RunFn(logger *log.Logger, c *diambra.EnvConfig, args []string) error {
 	level.Debug(logger).Log("config", fmt.Sprintf("%#v", c))
 
-	client, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
-	if err != nil {
-		return err
-	}
-	runner, err := container.NewDockerRunner(logger, client, c.AutoRemove)
+	runner, err := container.NewDockerRunner(logger, c.AutoRemove)
 	if err != nil {
 		return err
 	}

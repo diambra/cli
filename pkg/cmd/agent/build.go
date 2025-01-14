@@ -20,7 +20,6 @@ import (
 
 	"github.com/diambra/cli/pkg/container"
 	"github.com/diambra/cli/pkg/log"
-	dclient "github.com/docker/docker/client"
 	"github.com/go-kit/log/level"
 	"github.com/spf13/cobra"
 )
@@ -35,13 +34,8 @@ func NewBuildCmd(logger *log.Logger) *cobra.Command {
 			if len(args) == 0 {
 				args = []string{"."}
 			}
-			client, err := dclient.NewClientWithOpts(dclient.FromEnv, dclient.WithAPIVersionNegotiation())
-			if err != nil {
-				level.Error(logger).Log("msg", "failed to create docker client", "err", err)
-				os.Exit(1)
-			}
 
-			runner, err := container.NewDockerRunner(logger, client, false)
+			runner, err := container.NewDockerRunner(logger, false)
 			if err != nil {
 				level.Error(logger).Log("msg", "failed to create docker runner", "err", err)
 				os.Exit(1)
