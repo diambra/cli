@@ -48,14 +48,19 @@ type DockerRunner struct {
 	AutoRemove  bool
 }
 
-func NewDockerRunner(logger log.Logger, client *client.Client, autoRemove bool) (*DockerRunner, error) {
-	_, err := client.Ping(context.TODO())
+func NewDockerRunner(logger log.Logger, autoRemove bool) (*DockerRunner, error) {
+	cl, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
+	if err != nil {
+		level.Error(logger).Log("msg", "failed to create docker client", "err", err.Error())
+		os.Exit(1)
+	}
+	_, err = cl.Ping(context.TODO())
 	if err != nil {
 		return nil, fmt.Errorf("couldn't connect to docker. Make sure your user has docker access: %w", err)
 	}
 	return &DockerRunner{
 		Logger:      logger,
-		Client:      client,
+		Client:      cl,
 		TimeoutStop: 10 * time.Second,
 		AutoRemove:  autoRemove,
 	}, nil
