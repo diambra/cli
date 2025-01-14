@@ -120,6 +120,7 @@ type Runner interface {
 	Attach(id string) (io.WriteCloser, io.ReadCloser, error)
 	Wait(id string) (int, error)
 	Build(path, tag string) error
+	Push(tag, username, password, host string) error
 }
 
 func TagFromDir(dir string) (string, error) {

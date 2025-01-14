@@ -31,5 +31,6 @@ func NewCommand(logger *log.Logger) *cobra.Command {
 	cmd.AddCommand(NewSubmitCmd(logger))
 	cmd.AddCommand(NewTestCmd(logger))
 	cmd.AddCommand(NewBuildCmd(logger))
+	cmd.AddCommand(NewBuildAndPushCmd(logger))
 	return cmd
 }

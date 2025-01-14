@@ -17,6 +17,8 @@ package container
 
 import (
 	"context"
+	"encoding/base64"
+	"encoding/json"
 	"fmt"
 	"io"
 	"os"
@@ -305,4 +307,34 @@ func (r *DockerRunner) Build(path string, tag string) error {
 
 	termFd, isTerm := term.GetFdInfo(os.Stdout)
 	return jsonmessage.DisplayJSONMessagesStream(resp.Body, io.Writer(os.Stderr), termFd, isTerm, nil)
+}
+
+type DockerAuth struct {
+	Username      string `json:"username"`
+	Password      string `json:"password"`
+	ServerAddress string `json:"serveraddress"`
+}
+
+func (r *DockerRunner) Push(tag, username, password, host string) error {
+	ctx := context.Background()
+	auth := DockerAuth{
+		Username:      username,
+		Password:      password,
+		ServerAddress: host,
+	}
+	authStr, err := json.Marshal(auth)
+	if err != nil {
+		return err
+	}
+
+	resp, err := r.Client.ImagePush(ctx, tag, types.ImagePushOptions{
+		RegistryAuth: base64.URLEncoding.EncodeToString(authStr),
+	})
+	if err != nil {
+		return err
+	}
+	defer resp.Close()
+
+	termFd, isTerm := term.GetFdInfo(os.Stdout)
+	return jsonmessage.DisplayJSONMessagesStream(resp, io.Writer(os.Stderr), termFd, isTerm, nil)
 }
