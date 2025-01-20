@@ -62,7 +62,11 @@ func (r *mockRunner) Build(path, tag string) error {
 	panic("not implemented") // TODO: Implement
 }
 
-func (r *mockRunner) Push(tag, username, password, host string) error {
+func (r *mockRunner) Push(tag string) error {
+	panic("not implemented") // TODO: Implement
+}
+
+func (r *mockRunner) Login(server, username, password string) {
 	panic("not implemented") // TODO: Implement
 }
 

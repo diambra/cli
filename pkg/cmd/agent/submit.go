@@ -96,31 +96,32 @@ func NewSubmitCmd(logger *log.Logger) *cobra.Command {
 						version = time.Now().Format("20060102-150405")
 					}
 				}
-				level.Info(logger).Log("msg", "Building agent", "name", name, "version", version)
-				runner, err := container.NewDockerRunner(logger, false)
-				if err != nil {
-					level.Error(logger).Log("msg", "failed to create docker runner", "err", err)
-					os.Exit(1)
-				}
 				credentials, err := cl.Credentials()
 				if err != nil {
 					level.Error(logger).Log("msg", "failed to get credentials", "err", err.Error())
 					os.Exit(1)
 				}
 
+				level.Info(logger).Log("msg", "Building agent", "name", name, "version", version)
+				runner, err := container.NewDockerRunner(logger, false)
+				if err != nil {
+					level.Error(logger).Log("msg", "failed to create docker runner", "err", err)
+					os.Exit(1)
+				}
 				repositoryURL, err := url.Parse(credentials.Repository)
 				if err != nil {
 					level.Error(logger).Log("msg", "failed to parse repository URL", "err", err)
 					os.Exit(1)
 				}
 
+				runner.Login(credentials.Username, credentials.Password, repositoryURL.Host)
 				tag := fmt.Sprintf("%s%s:%s-%s", repositoryURL.Host, repositoryURL.Path, name, version)
 
 				if err := runner.Build(context, tag); err != nil {
 					level.Error(logger).Log("msg", "failed to build and push image", "err", err.Error())
 					os.Exit(1)
 				}
-				if err := runner.Push(tag, credentials.Username, credentials.Password, repositoryURL.Host); err != nil {
+				if err := runner.Push(tag); err != nil {
 					level.Error(logger).Log("msg", "failed to push agent", "err", err)
 					os.Exit(1)
 				}

@@ -1,5 +1,5 @@
 /*
- * Copyright 2022 The DIAMBRA Authors
+ * Copyright 2022-2025 The DIAMBRA Authors
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -44,8 +44,9 @@ import (
 type DockerRunner struct {
 	log.Logger
 	*client.Client
-	TimeoutStop time.Duration
-	AutoRemove  bool
+	TimeoutStop  time.Duration
+	AutoRemove   bool
+	registryAuth string
 }
 
 func NewDockerRunner(logger log.Logger, autoRemove bool) (*DockerRunner, error) {
@@ -314,26 +315,31 @@ func (r *DockerRunner) Build(path string, tag string) error {
 	return jsonmessage.DisplayJSONMessagesStream(resp.Body, io.Writer(os.Stderr), termFd, isTerm, nil)
 }
 
-type DockerAuth struct {
-	Username      string `json:"username"`
-	Password      string `json:"password"`
-	ServerAddress string `json:"serveraddress"`
-}
+func (r *DockerRunner) Login(username, password, serverAddress string) {
+	type DockerAuth struct {
+		Username      string `json:"username"`
+		Password      string `json:"password"`
+		ServerAddress string `json:"serveraddress"`
+	}
 
-func (r *DockerRunner) Push(tag, username, password, host string) error {
-	ctx := context.Background()
-	auth := DockerAuth{
+	auth := &DockerAuth{
 		Username:      username,
 		Password:      password,
-		ServerAddress: host,
-	}
-	authStr, err := json.Marshal(auth)
-	if err != nil {
-		return err
+		ServerAddress: serverAddress,
 	}
 
+	authStr, err := json.Marshal(auth)
+	if err != nil {
+		panic(err)
+	}
+
+	r.registryAuth = base64.URLEncoding.EncodeToString(authStr)
+}
+
+func (r *DockerRunner) Push(tag string) error {
+	ctx := context.Background()
 	resp, err := r.Client.ImagePush(ctx, tag, types.ImagePushOptions{
-		RegistryAuth: base64.URLEncoding.EncodeToString(authStr),
+		RegistryAuth: r.registryAuth,
 	})
 	if err != nil {
 		return err
