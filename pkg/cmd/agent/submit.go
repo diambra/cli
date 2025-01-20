@@ -96,6 +96,7 @@ func NewSubmitCmd(logger *log.Logger) *cobra.Command {
 						version = time.Now().Format("20060102-150405")
 					}
 				}
+
 				credentials, err := cl.Credentials()
 				if err != nil {
 					level.Error(logger).Log("msg", "failed to get credentials", "err", err.Error())
@@ -116,6 +117,14 @@ func NewSubmitCmd(logger *log.Logger) *cobra.Command {
 
 				runner.Login(credentials.Username, credentials.Password, repositoryURL.Host)
 				tag := fmt.Sprintf("%s%s:%s-%s", repositoryURL.Host, repositoryURL.Path, name, version)
+
+				if exists, err := runner.TagExists(tag); err != nil {
+					level.Error(logger).Log("msg", "failed to check if tag exists", "err", err)
+					os.Exit(1)
+				} else if exists {
+					level.Error(logger).Log("msg", fmt.Sprintf("tag %s already exists, use --name or --version to specify unused tag", tag), "tag", tag)
+					os.Exit(1)
+				}
 
 				if err := runner.Build(context, tag); err != nil {
 					level.Error(logger).Log("msg", "failed to build and push image", "err", err.Error())

@@ -70,6 +70,10 @@ func (r *mockRunner) Login(server, username, password string) {
 	panic("not implemented") // TODO: Implement
 }
 
+func (r *mockRunner) TagExists(tag string) (bool, error) {
+	panic("not implemented") // TODO: Implement
+}
+
 func TestDiambra(t *testing.T) {
 	var (
 		logger = log.NewLogfmtLogger(os.Stderr)
