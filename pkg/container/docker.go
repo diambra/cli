@@ -32,6 +32,7 @@ import (
 	"github.com/docker/docker/api/types/filters"
 	"github.com/docker/docker/api/types/mount"
 	"github.com/docker/docker/client"
+	"github.com/docker/docker/errdefs"
 	"github.com/docker/docker/pkg/archive"
 	"github.com/docker/docker/pkg/jsonmessage"
 	"github.com/docker/go-connections/nat"
@@ -348,4 +349,18 @@ func (r *DockerRunner) Push(tag string) error {
 
 	termFd, isTerm := term.GetFdInfo(os.Stdout)
 	return jsonmessage.DisplayJSONMessagesStream(resp, io.Writer(os.Stderr), termFd, isTerm, nil)
+}
+
+func (r *DockerRunner) TagExists(tag string) (bool, error) {
+	ctx := context.Background()
+	_, err := r.Client.DistributionInspect(ctx, tag, r.registryAuth)
+	if err == nil {
+		return true, nil
+	}
+
+	if errdefs.IsNotFound(err) {
+		return false, nil
+	}
+
+	return false, err
 }

@@ -89,6 +89,14 @@ func NewBuildAndPushCmd(logger *log.Logger) *cobra.Command {
 
 			runner.Login(credentials.Username, credentials.Password, repositoryURL.Host)
 			tag = fmt.Sprintf("%s%s:%s", repositoryURL.Host, repositoryURL.Path, tag)
+			if exists, err := runner.TagExists(tag); err != nil {
+				level.Error(logger).Log("msg", "failed to check if tag exists", "err", err)
+				os.Exit(1)
+			} else if exists {
+				level.Error(logger).Log("msg", "tag already exists, use --name or --version to specify unused tag", "tag", tag)
+				os.Exit(1)
+			}
+
 			level.Info(logger).Log("msg", "Building agent", "tag", tag)
 
 			if err := runner.Build(args[0], tag); err != nil {
