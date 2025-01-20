@@ -87,6 +87,7 @@ func NewBuildAndPushCmd(logger *log.Logger) *cobra.Command {
 				os.Exit(1)
 			}
 
+			runner.Login(credentials.Username, credentials.Password, repositoryURL.Host)
 			tag = fmt.Sprintf("%s%s:%s", repositoryURL.Host, repositoryURL.Path, tag)
 			level.Info(logger).Log("msg", "Building agent", "tag", tag)
 
@@ -95,7 +96,7 @@ func NewBuildAndPushCmd(logger *log.Logger) *cobra.Command {
 				os.Exit(1)
 			}
 
-			if err := runner.Push(tag, credentials.Username, credentials.Password, repositoryURL.Host); err != nil {
+			if err := runner.Push(tag); err != nil {
 				level.Error(logger).Log("msg", "failed to push agent", "err", err)
 				os.Exit(1)
 			}
