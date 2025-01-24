@@ -5,15 +5,12 @@ env = diambra.arena.make("doapp")
 observation = env.reset()
 
 while True:
-    env.render()
+    action = env.action_space.sample()
+    observation, reward, terminated, truncated, info = env.step(action)
 
-    actions = env.action_space.sample()
-
-    observation, reward, done, info = env.step(actions)
-
-    if done:
-        observation = env.reset()
-        if info["env_done"]:
+    if terminated or truncated:
+        observation, info = env.reset()
+        if info["env_done"] or test is True:
             break
 
 env.close()

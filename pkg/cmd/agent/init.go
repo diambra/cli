@@ -38,6 +38,10 @@ func NewInitCmd(logger *log.Logger) *cobra.Command {
 		Short: "Prepares local directory as agent for submission",
 		Long:  `This creates all files needed to submit an agent.`,
 		Run: func(cmd *cobra.Command, args []string) {
+			if err := config.Validate(); err != nil {
+				level.Error(logger).Log("msg", err.Error())
+				os.Exit(1)
+			}
 			parts, err := diambra.GetInstalledPackageVersion("diambra-arena")
 			if err != nil || len(parts) != 3 || (parts[0] == "0" && parts[1] == "0" && parts[2] == "0") {
 				level.Info(logger).Log("msg", "can't find installed diambra-arena version, using latest", "err", err)
@@ -47,7 +51,7 @@ func NewInitCmd(logger *log.Logger) *cobra.Command {
 					os.Exit(1)
 				}
 			}
-			config.Arena.Version = strings.Join(parts, ".")
+			config.ArenaVersion = strings.Join(parts, ".")
 			if err := agents.Generate(logger, args[0], config); err != nil {
 				level.Error(logger).Log("msg", "failed to initialize agent", "err", err.Error())
 				os.Exit(1)
@@ -56,7 +60,7 @@ func NewInitCmd(logger *log.Logger) *cobra.Command {
 		},
 		Args: cobra.ExactArgs(1),
 	}
-	cmd.Flags().StringVar(&config.Python.Version, "python.version", config.Python.Version, "Python version to use")
+	cmd.Flags().StringVar(&config.PythonVersion, "python.version", config.PythonVersion, "Python version to use")
 	cmd.Flags().BoolVar(&config.Secret, "secret", config.Secret, "Include secret in agent")
 
 	return cmd
