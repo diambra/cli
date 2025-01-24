@@ -31,37 +31,47 @@ var ReadmeTemplate string
 
 var differ = diffmatchpatch.New()
 
-type PythonConfig struct {
-	Version string
-}
-
-type BaseImageConfig struct {
-	Registry string
-	Image    string
-}
-
-type ArenaConfig struct {
-	Version string
+type TemplateConfig struct {
+	Registry     string
+	Image        string
+	Secret       bool
+	ArenaVersion string
 }
 
 type Config struct {
-	Python    PythonConfig
-	BaseImage BaseImageConfig
-	Arena     ArenaConfig
-	Secret    bool
+	PythonVersion string
+	ArenaVersion  string
+	Secret        bool
 }
+
+const (
+	OSVersion = "bullseye"
+)
+
+// FIXME: Read from https://github.com/orgs/diambra/packages?repo_name=arena
+var (
+	PythonVersions = []string{"3.10", "3.9", "3.8", "3.7"}
+)
 
 func NewConfig() (*Config, error) {
 	return &Config{
-		Arena: ArenaConfig{},
-		Python: PythonConfig{
-			Version: "3.7", // FIXME: Detect version
-		},
-		BaseImage: BaseImageConfig{
-			Registry: "docker.io",
-			Image:    "python",
-		},
+		ArenaVersion:  "",
+		PythonVersion: PythonVersions[0], // FIXME: Detect version
 	}, nil
+}
+
+func (c *Config) Validate() error {
+	found := false
+	for _, v := range PythonVersions {
+		if v == c.PythonVersion {
+			found = true
+			break
+		}
+	}
+	if !found {
+		return fmt.Errorf("python version %s not supported. Available: %s", c.PythonVersion, PythonVersions)
+	}
+	return nil
 }
 
 func WriteFile(logger log.Logger, path, name, tmpl string, config *Config) error {
@@ -71,6 +81,13 @@ func WriteFile(logger log.Logger, path, name, tmpl string, config *Config) error
 			return fmt.Errorf("error checking if %s exists: %w", name, err)
 		}
 		exists = false
+	}
+
+	templateConfig := TemplateConfig{
+		Registry:     "ghcr.io/diambra",
+		Image:        fmt.Sprintf("arena-base-on%s-%s:main", config.PythonVersion, OSVersion),
+		Secret:       config.Secret,
+		ArenaVersion: config.ArenaVersion,
 	}
 
 	if exists {
@@ -85,10 +102,10 @@ func WriteFile(logger log.Logger, path, name, tmpl string, config *Config) error
 			return fmt.Errorf("couldn't read existing file %s: %w", name, err)
 		}
 		new := bytes.Buffer{}
-		if err := template.Must(template.New(name).Parse(tmpl)).Execute(&new, config); err != nil {
+		if err := template.Must(template.New(name).Parse(tmpl)).Execute(&new, templateConfig); err != nil {
 			return err
 		}
-		diffs := differ.DiffMain(string(old), new.String(), true)
+		diffs := differ.DiffMain(string(old), new.String(), false)
 		if len(diffs) < 2 {
 			level.Info(logger).Log("msg", "Skipping "+name+", content identical", "file", name)
 			return nil
@@ -113,7 +130,7 @@ func WriteFile(logger log.Logger, path, name, tmpl string, config *Config) error
 		return err
 	}
 	level.Info(logger).Log("msg", "Creating "+name, "file", name)
-	return template.Must(template.New(name).Parse(tmpl)).Execute(fh, config)
+	return template.Must(template.New(name).Parse(tmpl)).Execute(fh, templateConfig)
 }
 
 func Generate(logger log.Logger, path string, config *Config) error {

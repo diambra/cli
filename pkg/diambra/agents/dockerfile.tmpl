@@ -1,4 +1,4 @@
-FROM {{ .BaseImage.Registry }}/{{ .BaseImage.Image }}:{{ .Python.Version }}
+FROM {{ .Registry }}/{{ .Image }}
 
 RUN apt-get -qy update && \
   apt-get -qy install libgl1 && \
