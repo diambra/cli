@@ -17,11 +17,9 @@ package agent
 
 import (
 	"fmt"
-	"net/url"
 	"os"
 	"path/filepath"
 
-	"github.com/diambra/cli/pkg/container"
 	"github.com/diambra/cli/pkg/diambra/client"
 	"github.com/diambra/cli/pkg/log"
 	"github.com/go-kit/log/level"
@@ -32,7 +30,8 @@ const defaultCredPath = "~/.diambra/credentials"
 
 func NewBuildAndPushCmd(logger *log.Logger) *cobra.Command {
 	var (
-		tag      = ""
+		name     = ""
+		version  = ""
 		credPath = defaultCredPath
 	)
 
@@ -43,12 +42,6 @@ func NewBuildAndPushCmd(logger *log.Logger) *cobra.Command {
 		Run: func(cmd *cobra.Command, args []string) {
 			if len(args) == 0 {
 				args = []string{"."}
-			}
-
-			runner, err := container.NewDockerRunner(logger, false)
-			if err != nil {
-				level.Error(logger).Log("msg", "failed to create docker runner", "err", err)
-				os.Exit(1)
 			}
 
 			if credPath == defaultCredPath {
@@ -66,53 +59,18 @@ func NewBuildAndPushCmd(logger *log.Logger) *cobra.Command {
 				os.Exit(1)
 			}
 
-			if tag == "" {
-				var err error
-				tag, err = container.TagFromDir(args[0])
-				if err != nil {
-					level.Error(logger).Log("msg", "failed to get tag from dir", "err", err)
-					os.Exit(1)
-				}
-			}
-
-			credentials, err := cl.Credentials()
+			tag, err := buildAndPush(logger, cl, args[0], name, version)
 			if err != nil {
-				level.Error(logger).Log("msg", "failed to get credentials", "err", err.Error())
+				level.Error(logger).Log("msg", "failed to build and push agent", "err", err)
 				os.Exit(1)
 			}
-
-			repositoryURL, err := url.Parse(credentials.Repository)
-			if err != nil {
-				level.Error(logger).Log("msg", "failed to parse repository URL", "err", err)
-				os.Exit(1)
-			}
-
-			runner.Login(credentials.Username, credentials.Password, repositoryURL.Host)
-			tag = fmt.Sprintf("%s%s:%s", repositoryURL.Host, repositoryURL.Path, tag)
-			if exists, err := runner.TagExists(tag); err != nil {
-				level.Error(logger).Log("msg", "failed to check if tag exists", "err", err)
-				os.Exit(1)
-			} else if exists {
-				level.Error(logger).Log("msg", "tag already exists, use --name or --version to specify unused tag", "tag", tag)
-				os.Exit(1)
-			}
-
-			level.Info(logger).Log("msg", "Building agent", "tag", tag)
-
-			if err := runner.Build(args[0], tag); err != nil {
-				level.Error(logger).Log("msg", "failed to build agent", "err", err)
-				os.Exit(1)
-			}
-
-			if err := runner.Push(tag); err != nil {
-				level.Error(logger).Log("msg", "failed to push agent", "err", err)
-				os.Exit(1)
-			}
+			level.Info(logger).Log("msg", fmt.Sprintf("Agent built and pushed: %s", tag), "tag", tag)
 		},
 		Args: cobra.MaximumNArgs(1),
 	}
-	cmd.Flags().StringVarP(&tag, "tag", "t", tag, "Tag for the image")
 	cmd.Flags().StringVar(&credPath, "path.credentials", defaultCredPath, "Path to credentials file")
+	cmd.Flags().StringVar(&name, "name", name, "Name of the agent image (only used when giving a directory)")
+	cmd.Flags().StringVar(&version, "version", version, "Version of the agent image (only used when giving a directory)")
 
 	return cmd
 }
