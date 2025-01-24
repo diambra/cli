@@ -35,13 +35,13 @@ func NewSubmitCmd(logger *log.Logger) *cobra.Command {
 		name             = ""
 		version          = ""
 	)
-	submissionConfig.RegisterCredentialsProviders()
 
 	c, err := diambra.NewConfig(logger)
 	if err != nil {
 		level.Error(logger).Log("msg", err.Error())
 		os.Exit(1)
 	}
+	submissionConfig.RegisterCredentialsProviders(logger, c.Home)
 
 	cmd := &cobra.Command{
 		Use:   "submit [flags] (directory | --submission.manifest=submission-manifest.yaml | docker-image) [args/command(s) ...]",

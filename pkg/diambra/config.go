@@ -254,9 +254,9 @@ func (c *SubmissionConfig) RegisterCredentialsProvider(name string, provider sec
 	}
 	c.credentialsProvider[name] = provider
 }
-func (c *SubmissionConfig) RegisterCredentialsProviders() {
+func (c *SubmissionConfig) RegisterCredentialsProviders(logger log.Logger, home string) {
 	c.RegisterCredentialsProvider("git", &secretsources.GitCredentials{})
-	c.RegisterCredentialsProvider("huggingface", &secretsources.HuggingfaceCredentials{})
+	c.RegisterCredentialsProvider("huggingface", secretsources.NewHuggingfaceCredentials(logger, home))
 }
 
 func (c *SubmissionConfig) AddFlags(flags *pflag.FlagSet) {
@@ -346,6 +346,7 @@ func (c *SubmissionConfig) Submission(config *EnvConfig, args []string) (*client
 		if !ok {
 			return nil, fmt.Errorf("invalid value for --submission.secrets-from: %s", c.SecretsFrom)
 		}
+
 		switch c.SecretsFrom {
 		case "git":
 			secrets, err := secretsources.CredentialsFill(ss, manifest.Sources)

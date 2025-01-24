@@ -25,6 +25,13 @@ type HuggingfaceCredentials struct {
 	Home   string
 }
 
+func NewHuggingfaceCredentials(logger log.Logger, home string) *HuggingfaceCredentials {
+	return &HuggingfaceCredentials{
+		logger: logger,
+		Home:   home,
+	}
+}
+
 func (c *HuggingfaceCredentials) Credentials(url string) (map[string]string, error) {
 	cmd := exec.Command(pyarena.FindPython(), "-c", GetHuggingfaceToken)
 	stdout := &bytes.Buffer{}

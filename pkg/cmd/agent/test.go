@@ -24,12 +24,12 @@ const (
 
 func NewTestCmd(logger *log.Logger) *cobra.Command {
 	submissionConfig := diambra.SubmissionConfig{}
-	submissionConfig.RegisterCredentialsProviders()
 	c, err := diambra.NewConfig(logger)
 	if err != nil {
 		level.Error(logger).Log("msg", err.Error())
 		os.Exit(1)
 	}
+	submissionConfig.RegisterCredentialsProviders(logger, c.Home)
 
 	cmd := &cobra.Command{
 		Use:   "test [flags] {--submission.manifest submission-manifest.yaml | docker-image} [args/command(s) ...]",
