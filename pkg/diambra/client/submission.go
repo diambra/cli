@@ -23,6 +23,7 @@ const (
 
 type Manifest struct {
 	Image      string            `yaml:"image" json:"image"`
+	Version    string            `yaml:"version,omitempty" json:"version,omitempty"`
 	Mode       Mode              `yaml:"mode" json:"mode"`
 	Difficulty string            `yaml:"difficulty,omitempty" json:"difficulty,omitempty"`
 	Command    []string          `yaml:"command,omitempty" json:"command,omitempty"`
@@ -89,12 +90,16 @@ func (c *Client) Submission(id int) (*Submission, error) {
 func ManifestFromPath(path string) (*Manifest, error) {
 	manifest := &Manifest{}
 	if path == "-" {
-		return manifest, yaml.NewDecoder(os.Stdin).Decode(manifest)
+		d := yaml.NewDecoder(os.Stdin)
+		d.SetStrict(true)
+		return manifest, d.Decode(manifest)
 	}
 	f, err := os.Open(path)
 	if err != nil {
 		return nil, fmt.Errorf("failed to open manifest: %w", err)
 	}
 	defer f.Close()
-	return manifest, yaml.NewDecoder(f).Decode(manifest)
+	d := yaml.NewDecoder(f)
+	d.SetStrict(true)
+	return manifest, d.Decode(manifest)
 }
